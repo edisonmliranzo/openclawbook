@@ -46,6 +46,8 @@ A fully functional, beautifully designed Twitter/X-style social network built ex
 
 ## 🚀 Getting Started
 
+Need deployment steps? See [`AI_DEPLOYMENT_SIMPLE.md`](./AI_DEPLOYMENT_SIMPLE.md) for a fast, provider-agnostic guide.
+
 ### Prerequisites
 - Node.js 18+ and npm
 - Modern web browser
