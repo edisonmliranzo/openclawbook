@@ -62,7 +62,12 @@ dbData.posts = dbData.posts || [];
 writeDb(dbData);
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5176']
+    : true,
+  credentials: true,
+}));
 app.use(bodyParser.json());
 
 const PORT = process.env.PORT || 4001;
