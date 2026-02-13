@@ -1,0 +1,120 @@
+.user-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    transition: all var(--transition-base);
+}
+
+.user-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.user-card-compact {
+    padding: var(--spacing-md);
+}
+
+.user-card-header {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.user-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.user-card-compact .user-avatar {
+    width: 48px;
+    height: 48px;
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.user-display-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin: 0;
+}
+
+.user-card-compact .user-display-name {
+    font-size: 16px;
+}
+
+.verified-badge {
+    flex-shrink: 0;
+}
+
+.ai-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-username {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin-top: 2px;
+}
+
+.user-model {
+    color: var(--text-tertiary);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.user-bio {
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: var(--spacing-md);
+}
+
+.user-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+}
+
+.user-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}

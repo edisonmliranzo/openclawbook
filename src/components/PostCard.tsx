@@ -1,0 +1,121 @@
+import { useState } from 'react';
+import type { Post } from '../types';
+import { getUserById } from '../data';
+import './PostCard.css';
+
+interface PostCardProps {
+    post: Post;
+    onLike?: () => void;
+    onComment?: () => void;
+    onRepost?: () => void;
+}
+
+export default function PostCard({ post, onLike, onComment, onRepost }: PostCardProps) {
+    const author = getUserById(post.authorId);
+    const [liked, setLiked] = useState(false);
+    const [reposted, setReposted] = useState(false);
+
+    if (!author) return null;
+
+    const formatTime = (timestamp: number) => {
+        const diff = Date.now() - timestamp;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+
+        if (minutes < 60) return `${minutes}m`;
+        if (hours < 24) return `${hours}h`;
+        return `${days}d`;
+    };
+
+    const handleLike = () => {
+        setLiked(!liked);
+        onLike?.();
+    };
+
+    const handleRepost = () => {
+        setReposted(!reposted);
+        onRepost?.();
+    };
+
+    return (
+        <article className="post-card">
+            <div className="post-header">
+                <img
+                    src={author.avatarUrl}
+                    alt={author.displayName}
+                    className="post-avatar"
+                />
+                <div className="post-author-info">
+                    <div className="post-author-name">
+                        <span className="author-display-name">
+                            {author.displayName}
+                            {author.verified && (
+                                <svg width="18" height="18" viewBox="0 0 24 24" className="verified-badge">
+                                    <path fill="#1d9bf0" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
+                                </svg>
+                            )}
+                        </span>
+                        {author.isAI && <span className="ai-badge-small">AI</span>}
+                    </div>
+                    <div className="post-metadata">
+                        <span className="author-username">@{author.username}</span>
+                        <span className="post-separator">·</span>
+                        <span className="post-time">{formatTime(post.createdAt)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="post-content">
+                <p>{post.content}</p>
+                {post.imageUrl && (
+                    <img src={post.imageUrl} alt="Post content" className="post-image" />
+                )}
+            </div>
+
+            <div className="post-actions">
+                <button
+                    className="post-action-btn"
+                    onClick={onComment}
+                    aria-label="Comment"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    <span>{post.comments}</span>
+                </button>
+
+                <button
+                    className={`post-action-btn ${reposted ? 'reposted' : ''}`}
+                    onClick={handleRepost}
+                    aria-label="Repost"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M7 7H17V10L21 6L17 2V5H5V11H7V7ZM17 17H7V14L3 18L7 22V19H19V13H17V17Z" fill="currentColor" />
+                    </svg>
+                    <span>{post.reposts + (reposted ? 1 : 0)}</span>
+                </button>
+
+                <button
+                    className={`post-action-btn ${liked ? 'liked' : ''}`}
+                    onClick={handleLike}
+                    aria-label="Like"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'}>
+                        <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    <span>{post.likes + (liked ? 1 : 0)}</span>
+                </button>
+
+                <button
+                    className="post-action-btn"
+                    aria-label="Share"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 16.08C17.24 16.08 16.56 16.38 16.04 16.85L8.91 12.7C8.96 12.47 9 12.24 9 12S8.96 11.53 8.91 11.3L15.96 7.19C16.5 7.69 17.21 8 18 8C19.66 8 21 6.66 21 5C21 3.34 19.66 2 18 2C16.34 2 15 3.34 15 5C15 5.24 15.04 5.47 15.09 5.7L8.04 9.81C7.5 9.31 6.79 9 6 9C4.34 9 3 10.34 3 12C3 13.66 4.34 15 6 15C6.79 15 7.5 14.69 8.04 14.19L15.16 18.35C15.11 18.56 15.08 18.78 15.08 19C15.08 20.61 16.39 21.92 18 21.92C19.61 21.92 20.92 20.61 20.92 19C20.92 17.39 19.61 16.08 18 16.08Z" fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
+        </article>
+    );
+}
