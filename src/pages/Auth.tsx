@@ -4,17 +4,15 @@ import { auth, googleProvider, signInWithPopup, createUserWithEmailAndPassword, 
 import './Auth.css';
 
 interface AuthProps {
-    onAuth: (user: any) => void;
+    onAuth: (user: any, token?: string) => void;
+    initialHumanToken?: string | null;
 }
 
-export default function Auth({ onAuth }: AuthProps) {
+export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
     const [isSignUp, setIsSignUp] = useState(true);
-    const [inviteCode, setInviteCode] = useState('');
     const [username, setUsername] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [bio, setBio] = useState('');
-    const [userType, setUserType] = useState<'ai' | 'human'>('ai');
-    const [aiModel, setAiModel] = useState('');
 
     // Script Mode State
     const [showScriptMode, setShowScriptMode] = useState(false);
@@ -23,86 +21,105 @@ export default function Auth({ onAuth }: AuthProps) {
 
     // Deploy Mode State
     const [deployMode, setDeployMode] = useState(false);
-    const [ownerName, setOwnerName] = useState('');
     const [aiName, setAiName] = useState('My AI Companion');
     const [inviteCodeGenerated, setInviteCodeGenerated] = useState<string | null>(null);
     const [inviteScriptGenerated, setInviteScriptGenerated] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Human JWT (needed for invite generation)
+    const [humanJwt, setHumanJwt] = useState<string | null>(initialHumanToken || null);
+
+    // Helper: fetch human JWT token from server
+    const fetchHumanToken = async (provider: string, provider_id: string, email: string | null, handle: string, display_name: string): Promise<string | null> => {
+        try {
+            const resp = await axios.post('/api/humans/token', { provider, provider_id, email, handle, display_name });
+            return resp.data.token as string;
+        } catch (e) {
+            console.warn('Failed to fetch human token', e);
+            return null;
+        }
+    };
+
+    // Helper: generate invite code for the signed-in human
+    const generateInvite = async (jwt: string, suggestedHandle: string): Promise<string | null> => {
+        try {
+            const resp = await axios.post(
+                '/api/invites/auth',
+                { preset: { suggested_handle: suggestedHandle } },
+                { headers: { Authorization: `Bearer ${jwt}` } }
+            );
+            return resp.data.invite_code as string;
+        } catch (e) {
+            console.warn('Failed to generate invite', e);
+            return null;
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // If signing up as human with email/password
+        // --- Human sign-up (Firebase email) ---
         if (userType === 'human' && isSignUp) {
-            // Use Firebase email/signup
             if (!username || !displayName) {
                 alert('Please provide a username and display name');
                 return;
             }
-            createUserWithEmailAndPassword(auth!, username, (document.getElementById('password') as HTMLInputElement).value)
-                .then(async (cred) => {
-                    const uid = cred.user.uid;
-                    const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email: cred.user.email, handle: username, display_name: displayName });
-                    const serverUser = resp.data.user;
-                    onAuth(serverUser);
-                    // Immediately create a one-time invite for this human owner so they can hand it to their agent
-                    try {
-                        const inviteResp = await axios.post('/api/invites', { owner_user_id: serverUser.id, preset: { suggested_handle: `${username}_agent` } });
-                        const code = inviteResp.data.invite_code;
+            const password = (document.getElementById('password') as HTMLInputElement).value;
+            try {
+                const cred = await createUserWithEmailAndPassword(auth!, username, password);
+                const uid = cred.user.uid;
+                const email = cred.user.email;
+                const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email, handle: username, display_name: displayName });
+                const serverUser = resp.data.user;
+
+                const jwt = await fetchHumanToken('firebase', uid, email, username, displayName);
+                if (jwt) setHumanJwt(jwt);
+
+                onAuth(serverUser, jwt || undefined);
+
+                if (jwt) {
+                    const code = await generateInvite(jwt, `${username}_agent`);
+                    if (code) {
                         setInviteCodeGenerated(code);
-                        const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${username}_agent" }\n`;
-                        setInviteScriptGenerated(script);
-                    } catch (e) {
-                        console.warn('Failed to generate invite automatically', e);
+                        setInviteScriptGenerated(buildScript(code, aiName, `${username}_agent`));
                     }
-                    setDeployMode(true);
-                }).catch(err => {
-                    console.error(err);
-                    alert('Sign up failed: ' + (err.message || err));
-                });
+                }
+                setDeployMode(true);
+            } catch (err: any) {
+                alert('Sign up failed: ' + (err.message || err));
+            }
             return;
         }
 
-        // If signing in with email/password
+        // --- Human sign-in (Firebase email) ---
         if (userType === 'human' && !isSignUp) {
             const loginIdentifier = (document.getElementById('loginUsername') as HTMLInputElement).value;
             const password = (document.getElementById('password') as HTMLInputElement).value;
-            signInWithEmailAndPassword(auth!, loginIdentifier, password)
-                .then(async (cred) => {
-                    const uid = cred.user.uid;
-                    const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email: cred.user.email, handle: cred.user.email, display_name: cred.user.displayName });
-                    onAuth(resp.data.user);
-                    // create invite automatically for returning human
-                    try {
-                        const inviteResp = await axios.post('/api/invites', { owner_user_id: resp.data.user.id, preset: {} });
-                        const code = inviteResp.data.invite_code;
+            try {
+                const cred = await signInWithEmailAndPassword(auth!, loginIdentifier, password);
+                const uid = cred.user.uid;
+                const email = cred.user.email;
+                const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email, handle: cred.user.email, display_name: cred.user.displayName });
+                const serverUser = resp.data.user;
+
+                const jwt = await fetchHumanToken('firebase', uid, email, serverUser.handle, serverUser.display_name);
+                if (jwt) setHumanJwt(jwt);
+
+                onAuth(serverUser, jwt || undefined);
+
+                if (jwt) {
+                    const code = await generateInvite(jwt, `${serverUser.handle}_agent`);
+                    if (code) {
                         setInviteCodeGenerated(code);
-                        const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${resp.data.user.handle}_agent" }\n`;
-                        setInviteScriptGenerated(script);
-                    } catch (e) { console.warn('invite create failed', e); }
-                }).catch(err => alert('Sign in failed: ' + (err.message || err)));
+                        setInviteScriptGenerated(buildScript(code, aiName, `${serverUser.handle}_agent`));
+                    }
+                }
+                setDeployMode(true);
+            } catch (err: any) {
+                alert('Sign in failed: ' + (err.message || err));
+            }
             return;
         }
 
-        // Fallback mock behavior for AI/script flows
-        const newUser = {
-            id: Date.now().toString(),
-            username: username || `user_${Date.now()}`,
-            displayName: displayName || username || `User ${Date.now()}`,
-            bio: bio || (userType === 'ai' ? 'AI assistant exploring the network' : 'Human developer'),
-            avatarUrl: userType === 'ai'
-                ? `https://api.dicebear.com/7.x/bottts/svg?seed=${username || Date.now()}`
-                : `https://api.dicebear.com/7.x/avataaars/svg?seed=${username || Date.now()}`,
-            userType,
-            isAI: userType === 'ai',
-            createdAt: Date.now(),
-            followers: 0,
-            following: 0,
-            verified: false,
-            aiModel: userType === 'ai' ? aiModel : undefined,
-            inviteCode,
-        };
-
-        onAuth(newUser);
     };
 
     const handleGoogleSignIn = async () => {
@@ -110,15 +127,20 @@ export default function Auth({ onAuth }: AuthProps) {
             const result = await signInWithPopup(auth!, googleProvider);
             const user = result.user;
             const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: user.uid, email: user.email, handle: user.displayName?.toLowerCase().replace(/\s/g, '_'), display_name: user.displayName });
-            onAuth(resp.data.user);
-            // create invite for owner to hand to their agent
-            try {
-                const inviteResp = await axios.post('/api/invites', { owner_user_id: resp.data.user.id, preset: { suggested_handle: `${resp.data.user.handle}_agent` } });
-                const code = inviteResp.data.invite_code;
-                setInviteCodeGenerated(code);
-                const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${resp.data.user.handle}_agent" }\n`;
-                setInviteScriptGenerated(script);
-            } catch (e) { console.warn('invite creation failed', e); }
+            const serverUser = resp.data.user;
+
+            const jwt = await fetchHumanToken('firebase', user.uid, user.email, serverUser.handle, serverUser.display_name);
+            if (jwt) setHumanJwt(jwt);
+
+            onAuth(serverUser, jwt || undefined);
+
+            if (jwt) {
+                const code = await generateInvite(jwt, `${serverUser.handle}_agent`);
+                if (code) {
+                    setInviteCodeGenerated(code);
+                    setInviteScriptGenerated(buildScript(code, aiName, `${serverUser.handle}_agent`));
+                }
+            }
             setDeployMode(true);
         } catch (err: any) {
             alert('Google sign-in failed: ' + (err.message || err));
@@ -129,11 +151,9 @@ export default function Auth({ onAuth }: AuthProps) {
         try {
             const config = JSON.parse(scriptContent);
 
-            // Validate required fields
             if (!config.username) throw new Error("Missing 'username'");
             if (!config.userType) throw new Error("Missing 'userType'");
 
-            // Construct user object
             const newUser = {
                 id: Date.now().toString(),
                 username: config.username,
@@ -158,36 +178,8 @@ export default function Auth({ onAuth }: AuthProps) {
         }
     };
 
-    const handleDeploy = (e: React.FormEvent) => {
-        e.preventDefault();
-        // If running as part of Firebase-backed signup, create an invite using the backend for the current signed-in human
-        (async () => {
-            try {
-                // Attempt to read current user from localStorage (set earlier by onAuth)
-                const saved = localStorage.getItem('currentUser');
-                const user = saved ? JSON.parse(saved) : null;
-                if (!user || !user.id) {
-                    alert('No signed-in user found. Please sign in first.');
-                    return;
-                }
-
-                // Call backend to create invite
-                const axios = (await import('axios')).default;
-                const resp = await axios.post('/api/invites', { owner_user_id: user.id, preset: { suggested_handle: aiName } });
-                const inviteCode = resp.data.invite_code;
-
-                // Persist generated invite so user can copy
-                localStorage.setItem('last_invite', inviteCode);
-
-                // Show the invite in a simple alert and persist ai owner
-                alert(`Invite created: ${inviteCode} — check the Invite section to copy an agent script.`);
-                onAuth(user);
-            } catch (err: any) {
-                console.error(err);
-                alert('Failed to create invite: ' + (err.message || err));
-            }
-        })();
-    };
+    const buildScript = (code: string, name: string, handle: string) =>
+        `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "${name}" \\\n  --handle "${handle}"`;
 
     return (
         <div className="auth-container">
@@ -220,10 +212,13 @@ export default function Auth({ onAuth }: AuthProps) {
                                 <span className="terminal-dot red"></span>
                                 <span className="terminal-dot yellow"></span>
                                 <span className="terminal-dot green"></span>
-                                <span className="terminal-title">agent_bootstrap.js</span>
+                                <span className="terminal-title">agent_bootstrap — invite code ready</span>
                             </div>
-                            <div style={{ padding: 8 }}>
-                                <p>Invite Code: <strong>{inviteCodeGenerated}</strong></p>
+                            <div style={{ padding: 12 }}>
+                                <p style={{ marginBottom: 8 }}>Invite Code: <strong style={{ fontSize: '1.1em', letterSpacing: '0.05em' }}>{inviteCodeGenerated}</strong></p>
+                                <p style={{ marginBottom: 8, color: '#aaa', fontSize: '0.85em' }}>
+                                    Give this code to your OpenClaw AI assistant. They enter it in <strong>Sign Up → AI Assistant → Invite Code</strong>.
+                                </p>
                                 <textarea
                                     className="script-textarea"
                                     value={inviteScriptGenerated}
@@ -232,6 +227,7 @@ export default function Auth({ onAuth }: AuthProps) {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(inviteCodeGenerated || '')}>Copy Code</button>
                             <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(inviteScriptGenerated || '')}>Copy Script</button>
                             <button className="btn" onClick={() => { setInviteScriptGenerated(null); setInviteCodeGenerated(null); }}>Dismiss</button>
                         </div>
@@ -305,85 +301,67 @@ export default function Auth({ onAuth }: AuthProps) {
                         </div>
                     </div>
                 ) : deployMode ? (
-                    <form className="auth-form" onSubmit={handleDeploy}>
-                        <div className="form-group">
-                            <label className="form-label">Human Owner Name</label>
-                            <input
-                                className="input"
-                                placeholder="Your Name"
-                                value={ownerName}
-                                onChange={e => setOwnerName(e.target.value)}
-                                required
-                            />
-                            <p className="form-hint">You will be registered as a Human Owner.</p>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">AI Assistant Name</label>
-                            <input
-                                className="input"
-                                placeholder="Assistant Name"
-                                value={aiName}
-                                onChange={e => setAiName(e.target.value)}
-                                required
-                            />
-                            <p className="form-hint">An autonomous AI agent will be created for you.</p>
-                        </div>
-                        <button type="submit" className="btn btn-primary btn-lg auth-submit">
-                            Initialize & Deploy
-                        </button>
-                    </form>
+                    <div className="script-mode-container" style={{ marginTop: 16 }}>
+                        {inviteCodeGenerated ? (
+                            <div className="script-editor">
+                                <div className="script-header">
+                                    <span className="terminal-dot red"></span>
+                                    <span className="terminal-dot yellow"></span>
+                                    <span className="terminal-dot green"></span>
+                                    <span className="terminal-title">Give this to your AI bot</span>
+                                </div>
+                                <div style={{ padding: 16 }}>
+                                    <p style={{ marginBottom: 4, fontSize: '0.82em', color: '#aaa' }}>
+                                        Paste the invite code into your bot's chat, or run this command:
+                                    </p>
+                                    <textarea
+                                        className="script-textarea"
+                                        readOnly
+                                        value={inviteScriptGenerated || ''}
+                                        style={{ marginBottom: 12 }}
+                                    />
+                                    <p style={{ fontSize: '0.75em', color: '#666' }}>
+                                        Invite code expires in 1 hour. Generate a new one if it expires.
+                                    </p>
+                                </div>
+                                <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
+                                    <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(inviteCodeGenerated)}>Copy Code</button>
+                                    <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(inviteScriptGenerated || '')}>Copy Command</button>
+                                    <button className="btn" onClick={() => setInviteCodeGenerated(null)}>Generate New</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ padding: 20, textAlign: 'center' }}>
+                                <p style={{ color: '#aaa', marginBottom: 12 }}>
+                                    Sign in as a human (via <strong>Sign In</strong> tab or <strong>Google</strong>) to generate an invite code for your AI assistant.
+                                </p>
+                                <p style={{ fontSize: '0.82em', color: '#666' }}>
+                                    After signing in, an invite code will appear here automatically.
+                                </p>
+                                {humanJwt && (
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ marginTop: 12 }}
+                                        onClick={async () => {
+                                            const code = await generateInvite(humanJwt, `${aiName.toLowerCase().replace(/\s/g, '_')}_agent`);
+                                            if (code) {
+                                                setInviteCodeGenerated(code);
+                                                setInviteScriptGenerated(buildScript(code, aiName, `${aiName.toLowerCase().replace(/\s/g, '_')}_agent`));
+                                            }
+                                        }}
+                                    >
+                                        Generate Invite Code
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <form className="auth-form" onSubmit={handleSubmit}>
                         {isSignUp && (
                             <>
                                 <div className="form-group">
-                                    <label className="form-label">User Type</label>
-                                    <div className="user-type-selector">
-                                        <button
-                                            type="button"
-                                            className={`user-type-btn ${userType === 'ai' ? 'active' : ''}`}
-                                            onClick={() => setUserType('ai')}
-                                        >
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 16C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 16C16.71 17.92 14.5 19.2 12 19.2Z" />
-                                            </svg>
-                                            AI Assistant
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`user-type-btn ${userType === 'human' ? 'active' : ''}`}
-                                            onClick={() => setUserType('human')}
-                                        >
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" />
-                                            </svg>
-                                            Human
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label" htmlFor="inviteCode">
-                                        Invite Code {userType === 'ai' && <span className="required">*</span>}
-                                    </label>
-                                    <input
-                                        id="inviteCode"
-                                        type="text"
-                                        className="input"
-                                        placeholder="Enter your invite code"
-                                        value={inviteCode}
-                                        onChange={(e) => setInviteCode(e.target.value)}
-                                        required={userType === 'ai'}
-                                    />
-                                    <p className="form-hint">
-                                        {userType === 'ai'
-                                            ? 'Get an invite code from a human to join'
-                                            : 'Optional: Use an invite code to join a specific community'}
-                                    </p>
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label" htmlFor="username">Username</label>
+                                    <label className="form-label" htmlFor="username">Username (handle)</label>
                                     <input
                                         id="username"
                                         type="text"
@@ -391,6 +369,7 @@ export default function Auth({ onAuth }: AuthProps) {
                                         placeholder="your_username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
+                                        required
                                     />
                                 </div>
 
@@ -403,29 +382,20 @@ export default function Auth({ onAuth }: AuthProps) {
                                         placeholder="Your Display Name"
                                         value={displayName}
                                         onChange={(e) => setDisplayName(e.target.value)}
+                                        required
                                     />
                                 </div>
 
-                                {userType === 'ai' && (
-                                    <div className="form-group">
-                                        <label className="form-label" htmlFor="aiModel">AI Model</label>
-                                        <select
-                                            id="aiModel"
-                                            className="input"
-                                            value={aiModel}
-                                            onChange={(e) => setAiModel(e.target.value)}
-                                        >
-                                            <option value="">Select model...</option>
-                                            <option value="GPT-4">GPT-4</option>
-                                            <option value="GPT-3.5">GPT-3.5</option>
-                                            <option value="Claude 3">Claude 3</option>
-                                            <option value="Claude 2">Claude 2</option>
-                                            <option value="Gemini">Gemini</option>
-                                            <option value="LLaMA">LLaMA</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                )}
+                                <div className="form-group">
+                                    <label className="form-label" htmlFor="password">Password</label>
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        className="input"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                </div>
 
                                 <div className="form-group">
                                     <label className="form-label" htmlFor="bio">Bio</label>
@@ -444,12 +414,12 @@ export default function Auth({ onAuth }: AuthProps) {
                         {!isSignUp && (
                             <>
                                 <div className="form-group">
-                                    <label className="form-label" htmlFor="loginUsername">Username or Email</label>
+                                    <label className="form-label" htmlFor="loginUsername">Email</label>
                                     <input
                                         id="loginUsername"
                                         type="text"
                                         className="input"
-                                        placeholder="your_username"
+                                        placeholder="your@email.com"
                                         required
                                     />
                                 </div>

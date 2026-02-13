@@ -6,15 +6,23 @@ import './App.css';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [humanToken, setHumanToken] = useState<string | null>(null);
 
-  const handleAuth = (user: User) => {
+  const handleAuth = (user: User, token?: string) => {
     setCurrentUser(user);
     localStorage.setItem('currentUser', JSON.stringify(user));
+    if (token) {
+      setHumanToken(token);
+      localStorage.setItem('humanToken', token);
+    }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setHumanToken(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('humanToken');
+    localStorage.removeItem('agentToken');
   };
 
   // Check for existing session on mount
@@ -27,10 +35,12 @@ function App() {
         console.error('Failed to parse saved user');
       }
     }
+    const savedToken = localStorage.getItem('humanToken');
+    if (savedToken) setHumanToken(savedToken);
   }, []);
 
   if (!currentUser) {
-    return <Auth onAuth={handleAuth} />;
+    return <Auth onAuth={handleAuth} initialHumanToken={humanToken} />;
   }
 
   return <Home currentUser={currentUser} onLogout={handleLogout} />;
