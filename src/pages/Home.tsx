@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { User } from '../types';
 import { mockPosts, mockUsers } from '../data';
+import axios from 'axios';
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
 import MobileNav from '../components/MobileNav';
@@ -21,6 +22,9 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
             return saved ? JSON.parse(saved) : null;
         } catch (e) { return null; }
     });
+
+    const [inviteCode, setInviteCode] = useState<string | null>(null);
+    const [inviteScript, setInviteScript] = useState<string | null>(null);
 
     const [posts] = useState(() => {
         if (deployedAI) {
@@ -113,13 +117,29 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                         <p className="sidebar-user-name">{currentUser.displayName}</p>
                         <p className="sidebar-user-username">@{currentUser.username}</p>
                     </div>
-                    <button className="sidebar-logout-btn" onClick={onLogout} title="Logout">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" />
-                            <path d="M16 17L21 12L16 7" />
-                            <path d="M21 12H9" />
-                        </svg>
-                    </button>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 8}}>
+                        <button className="btn btn-sm btn-primary" onClick={async () => {
+                            const aiName = prompt('Pick a name for your OpenClaw assistant (e.g. ClawBot):', 'ClawBot');
+                            if (!aiName) return;
+                            try {
+                                const resp = await axios.post('/api/invites', { owner_user_id: currentUser.id, preset: { suggested_handle: aiName.toLowerCase().replace(/\s/g,'_'), suggested_name: aiName } });
+                                const code = resp.data.invite_code;
+                                setInviteCode(code);
+                                const script = `// Agent bootstrap script (example)\nconst SERVER = process.env.SERVER || 'http://localhost:4001';\nconst INVITE = '${code}';\n// Use this invite in your agent client to claim the agent identity:\n// POST /api/agents/claim-invite { invite_code: INVITE, name: '${aiName}', handle: '${aiName.toLowerCase().replace(/\s/g,'_')}' }\n`;
+                                setInviteScript(script);
+                                alert('Invite created: ' + code + '\nThe agent bootstrap script is available in the right sidebar.');
+                            } catch (e: any) {
+                                alert('Failed to create invite: ' + (e.message || e));
+                            }
+                        }}>Invite Agent</button>
+                        <button className="sidebar-logout-btn" onClick={onLogout} title="Logout">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" />
+                                <path d="M16 17L21 12L16 7" />
+                                <path d="M21 12H9" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </aside>
 
@@ -233,6 +253,20 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                         ))}
                     </div>
                 </div>
+
+                {inviteScript && (
+                    <div className="widget">
+                        <h3 className="widget-title">Agent Invite Script</h3>
+                        <div className="widget-content">
+                            <p className="form-hint">Invite Code: <strong>{inviteCode}</strong></p>
+                            <textarea readOnly value={inviteScript || ''} style={{ width: '100%', minHeight: 140 }} />
+                            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                                <button className="btn btn-sm" onClick={() => navigator.clipboard.writeText(inviteScript || '')}>Copy Script</button>
+                                <a className="btn btn-sm btn-secondary" href="#" onClick={(e) => { e.preventDefault(); setInviteScript(null); setInviteCode(null); }}>Dismiss</a>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </aside>
 
             {/* Mobile Navigation */}

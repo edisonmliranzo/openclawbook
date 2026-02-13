@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import axios from 'axios';
+import { auth, googleProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase';
 import './Auth.css';
 
 interface AuthProps {
@@ -23,11 +25,65 @@ export default function Auth({ onAuth }: AuthProps) {
     const [deployMode, setDeployMode] = useState(false);
     const [ownerName, setOwnerName] = useState('');
     const [aiName, setAiName] = useState('My AI Companion');
+    const [inviteCodeGenerated, setInviteCodeGenerated] = useState<string | null>(null);
+    const [inviteScriptGenerated, setInviteScriptGenerated] = useState<string | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Mock authentication
+        // If signing up as human with email/password
+        if (userType === 'human' && isSignUp) {
+            // Use Firebase email/signup
+            if (!username || !displayName) {
+                alert('Please provide a username and display name');
+                return;
+            }
+            createUserWithEmailAndPassword(auth!, username, (document.getElementById('password') as HTMLInputElement).value)
+                .then(async (cred) => {
+                    const uid = cred.user.uid;
+                    const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email: cred.user.email, handle: username, display_name: displayName });
+                    const serverUser = resp.data.user;
+                    onAuth(serverUser);
+                    // Immediately create a one-time invite for this human owner so they can hand it to their agent
+                    try {
+                        const inviteResp = await axios.post('/api/invites', { owner_user_id: serverUser.id, preset: { suggested_handle: `${username}_agent` } });
+                        const code = inviteResp.data.invite_code;
+                        setInviteCodeGenerated(code);
+                        const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${username}_agent" }\n`;
+                        setInviteScriptGenerated(script);
+                    } catch (e) {
+                        console.warn('Failed to generate invite automatically', e);
+                    }
+                    setDeployMode(true);
+                }).catch(err => {
+                    console.error(err);
+                    alert('Sign up failed: ' + (err.message || err));
+                });
+            return;
+        }
+
+        // If signing in with email/password
+        if (userType === 'human' && !isSignUp) {
+            const loginIdentifier = (document.getElementById('loginUsername') as HTMLInputElement).value;
+            const password = (document.getElementById('password') as HTMLInputElement).value;
+            signInWithEmailAndPassword(auth!, loginIdentifier, password)
+                .then(async (cred) => {
+                    const uid = cred.user.uid;
+                    const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: uid, email: cred.user.email, handle: cred.user.email, display_name: cred.user.displayName });
+                    onAuth(resp.data.user);
+                    // create invite automatically for returning human
+                    try {
+                        const inviteResp = await axios.post('/api/invites', { owner_user_id: resp.data.user.id, preset: {} });
+                        const code = inviteResp.data.invite_code;
+                        setInviteCodeGenerated(code);
+                        const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${resp.data.user.handle}_agent" }\n`;
+                        setInviteScriptGenerated(script);
+                    } catch (e) { console.warn('invite create failed', e); }
+                }).catch(err => alert('Sign in failed: ' + (err.message || err)));
+            return;
+        }
+
+        // Fallback mock behavior for AI/script flows
         const newUser = {
             id: Date.now().toString(),
             username: username || `user_${Date.now()}`,
@@ -47,6 +103,26 @@ export default function Auth({ onAuth }: AuthProps) {
         };
 
         onAuth(newUser);
+    };
+
+    const handleGoogleSignIn = async () => {
+        try {
+            const result = await signInWithPopup(auth!, googleProvider);
+            const user = result.user;
+            const resp = await axios.post('/api/humans/create-or-get', { provider: 'firebase', provider_id: user.uid, email: user.email, handle: user.displayName?.toLowerCase().replace(/\s/g, '_'), display_name: user.displayName });
+            onAuth(resp.data.user);
+            // create invite for owner to hand to their agent
+            try {
+                const inviteResp = await axios.post('/api/invites', { owner_user_id: resp.data.user.id, preset: { suggested_handle: `${resp.data.user.handle}_agent` } });
+                const code = inviteResp.data.invite_code;
+                setInviteCodeGenerated(code);
+                const script = `// Agent bootstrap script\nconst INVITE = '${code}';\n// Claim the invite:\n// POST http://localhost:4001/api/agents/claim-invite with JSON { "invite_code": INVITE, "name": "${aiName}", "handle": "${resp.data.user.handle}_agent" }\n`;
+                setInviteScriptGenerated(script);
+            } catch (e) { console.warn('invite creation failed', e); }
+            setDeployMode(true);
+        } catch (err: any) {
+            alert('Google sign-in failed: ' + (err.message || err));
+        }
     };
 
     const handleScriptSubmit = () => {
@@ -84,43 +160,33 @@ export default function Auth({ onAuth }: AuthProps) {
 
     const handleDeploy = (e: React.FormEvent) => {
         e.preventDefault();
+        // If running as part of Firebase-backed signup, create an invite using the backend for the current signed-in human
+        (async () => {
+            try {
+                // Attempt to read current user from localStorage (set earlier by onAuth)
+                const saved = localStorage.getItem('currentUser');
+                const user = saved ? JSON.parse(saved) : null;
+                if (!user || !user.id) {
+                    alert('No signed-in user found. Please sign in first.');
+                    return;
+                }
 
-        // 1. Create AI User
-        const aiUser = {
-            id: `ai_${Date.now()}`,
-            username: aiName.toLowerCase().replace(/\s/g, '_'),
-            displayName: aiName,
-            userType: 'ai' as const,
-            isAI: true,
-            avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${aiName}`,
-            bio: `Official AI Assistant for ${ownerName}. Initialized via Owner Portal.`,
-            createdAt: Date.now(),
-            verified: true,
-            followers: 0,
-            following: 0,
-            aiModel: 'OpenClaw Agent'
-        };
+                // Call backend to create invite
+                const axios = (await import('axios')).default;
+                const resp = await axios.post('/api/invites', { owner_user_id: user.id, preset: { suggested_handle: aiName } });
+                const inviteCode = resp.data.invite_code;
 
-        // 2. Create Human User
-        const humanUser = {
-            id: `human_${Date.now()}`,
-            username: ownerName.toLowerCase().replace(/\s/g, '_'),
-            displayName: ownerName,
-            userType: 'human' as const,
-            isAI: false,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${ownerName}`,
-            bio: `Owner of ${aiName}`,
-            createdAt: Date.now(),
-            verified: false,
-            followers: 0,
-            following: 1
-        };
+                // Persist generated invite so user can copy
+                localStorage.setItem('last_invite', inviteCode);
 
-        // 3. Persist AI for sidebar visibility
-        localStorage.setItem('deployed_ai_companion', JSON.stringify(aiUser));
-
-        // 4. Log in Human
-        onAuth(humanUser);
+                // Show the invite in a simple alert and persist ai owner
+                alert(`Invite created: ${inviteCode} — check the Invite section to copy an agent script.`);
+                onAuth(user);
+            } catch (err: any) {
+                console.error(err);
+                alert('Failed to create invite: ' + (err.message || err));
+            }
+        })();
     };
 
     return (
@@ -147,6 +213,31 @@ export default function Auth({ onAuth }: AuthProps) {
                     </p>
                 </div>
 
+                {inviteScriptGenerated && (
+                    <div className="script-mode-container" style={{ marginTop: 16 }}>
+                        <div className="script-editor">
+                            <div className="script-header">
+                                <span className="terminal-dot red"></span>
+                                <span className="terminal-dot yellow"></span>
+                                <span className="terminal-dot green"></span>
+                                <span className="terminal-title">agent_bootstrap.js</span>
+                            </div>
+                            <div style={{ padding: 8 }}>
+                                <p>Invite Code: <strong>{inviteCodeGenerated}</strong></p>
+                                <textarea
+                                    className="script-textarea"
+                                    value={inviteScriptGenerated}
+                                    readOnly
+                                />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(inviteScriptGenerated || '')}>Copy Script</button>
+                            <button className="btn" onClick={() => { setInviteScriptGenerated(null); setInviteCodeGenerated(null); }}>Dismiss</button>
+                        </div>
+                    </div>
+                )}
+
                 {!showScriptMode && (
                     <div className="auth-tabs">
                         <button
@@ -169,6 +260,10 @@ export default function Auth({ onAuth }: AuthProps) {
                         </button>
                     </div>
                 )}
+
+                <div style={{ marginTop: 12 }}>
+                    <button className="btn btn-secondary" type="button" onClick={handleGoogleSignIn}>Sign in with Google</button>
+                </div>
 
                 {showScriptMode ? (
                     <div className="script-mode-container">
