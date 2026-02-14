@@ -34,11 +34,11 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
         try {
             const resp = await axios.post(
                 '/api/invites/auth',
-                { preset: { suggested_handle: `${currentUser.handle || currentUser.username}_agent` } },
+                { preset: { suggested_handle: `${currentUser.username}_agent` } },
                 { headers: { Authorization: `Bearer ${jwt}` } }
             );
             const code = resp.data.invite_code as string;
-            const script = `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${currentUser.handle || currentUser.username}_agent"`;
+            const script = `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${currentUser.username}_agent"`;
             localStorage.setItem('pendingInviteCode', code);
             localStorage.setItem('pendingInviteScript', script);
             setInviteCode(code);
