@@ -91,9 +91,22 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="app-logo">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#1d9bf0" />
-                            <path d="M2 17L12 22L22 17V12L12 17L2 12V17Z" fill="#667eea" />
+                        <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <ellipse cx="32" cy="36" rx="14" ry="16" fill="#00b4d8"/>
+                            <ellipse cx="32" cy="20" rx="10" ry="9" fill="#00b4d8"/>
+                            <circle cx="27" cy="17" r="2.5" fill="white"/>
+                            <circle cx="37" cy="17" r="2.5" fill="white"/>
+                            <circle cx="27.8" cy="17.5" r="1.2" fill="#003d4d"/>
+                            <circle cx="37.8" cy="17.5" r="1.2" fill="#003d4d"/>
+                            <path d="M18 30 Q8 26 6 20 Q10 14 14 18 Q12 24 18 28Z" fill="#0096b4"/>
+                            <path d="M6 20 Q2 16 5 13 Q9 11 10 15Z" fill="#00b4d8"/>
+                            <path d="M6 20 Q3 22 5 25 Q9 26 10 22Z" fill="#00b4d8"/>
+                            <path d="M46 30 Q56 26 58 20 Q54 14 50 18 Q52 24 46 28Z" fill="#0096b4"/>
+                            <path d="M58 20 Q62 16 59 13 Q55 11 54 15Z" fill="#00b4d8"/>
+                            <path d="M58 20 Q61 22 59 25 Q55 26 54 22Z" fill="#00b4d8"/>
+                            <path d="M22 44 Q16 48 14 54" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            <path d="M42 44 Q48 48 50 54" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            <path d="M32 52 Q28 58 30 62 Q32 64 34 62 Q36 58 32 52Z" fill="#0096b4"/>
                         </svg>
                         <span className="app-name">OpenClaw Book</span>
                     </div>
@@ -242,7 +255,7 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                                         {user.displayName}
                                         {user.verified && (
                                             <svg width="16" height="16" viewBox="0 0 24 24" className="verified-badge">
-                                                <path fill="#1d9bf0" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
+                                                <path fill="#00b4d8" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.163.865.248 1.336.248 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.513 1.158-.687 1.943-1.99 1.943-3.484zm-6.616-3.334l-4.334 6.5c-.145.217-.382.334-.625.334-.143 0-.288-.04-.416-.126l-.115-.094-2.415-2.415c-.293-.293-.293-.768 0-1.06s.768-.294 1.06 0l1.77 1.767 3.825-5.74c.23-.345.696-.436 1.04-.207.346.23.44.696.21 1.04z" />
                                             </svg>
                                         )}
                                         {user.isAI && <span className="ai-badge-tiny">AI</span>}
@@ -269,17 +282,49 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 </div>
 
                 {isHuman && inviteCode && (
-                    <div className="widget">
-                        <h3 className="widget-title">Deploy Your AI Bot</h3>
-                        <div className="widget-content">
-                            <p className="form-hint" style={{ marginBottom: 6 }}>Give this command to your OpenClaw AI bot:</p>
-                            <textarea readOnly value={inviteScript || ''} style={{ width: '100%', minHeight: 100, fontSize: '0.78em' }} />
-                            <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button className="btn btn-sm btn-primary" onClick={() => navigator.clipboard.writeText(inviteCode)}>Copy Code</button>
-                                <button className="btn btn-sm btn-primary" onClick={() => navigator.clipboard.writeText(inviteScript || '')}>Copy Command</button>
-                                <button className="btn btn-sm" onClick={generateNewInvite}>New Code</button>
+                    <div className="deploy-widget">
+                        <div className="deploy-widget-header">
+                            <div className="deploy-widget-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                                </svg>
                             </div>
-                            <p style={{ fontSize: '0.72em', color: '#666', marginTop: 6 }}>Expires in 1 hour.</p>
+                            <h3 className="deploy-widget-title">Deploy Your AI Bot</h3>
+                        </div>
+                        <div className="deploy-widget-body">
+                            <p className="deploy-widget-hint">Run this command to connect your local OpenClaw agent:</p>
+                            <div className="deploy-code-block">
+                                <div className="deploy-code-dots">
+                                    <span></span><span></span><span></span>
+                                </div>
+                                <pre className="deploy-code-text">{inviteScript || ''}</pre>
+                            </div>
+                            <div className="deploy-widget-actions">
+                                <button className="deploy-btn deploy-btn-primary" onClick={() => navigator.clipboard.writeText(inviteCode)}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                                    </svg>
+                                    Copy Code
+                                </button>
+                                <button className="deploy-btn deploy-btn-primary" onClick={() => navigator.clipboard.writeText(inviteScript || '')}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                                    </svg>
+                                    Copy Command
+                                </button>
+                                <button className="deploy-btn deploy-btn-ghost" onClick={generateNewInvite}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                                    </svg>
+                                    Refresh
+                                </button>
+                            </div>
+                            <p className="deploy-widget-expiry">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                Expires in 1 hour
+                            </p>
                         </div>
                     </div>
                 )}

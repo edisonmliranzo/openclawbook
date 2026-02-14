@@ -9,7 +9,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPas
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: 'AIzaSyCMfUdoQjl2-DlTVBaEIOVYwSJuZXjjlfU',
-  authDomain: 'gen-lang-client-0467247523.firebaseapp.com',
+  authDomain: 'openclawbook.dev',
   databaseURL: 'https://gen-lang-client-0467247523-default-rtdb.firebaseio.com',
   projectId: 'gen-lang-client-0467247523',
   storageBucket: 'gen-lang-client-0467247523.firebasestorage.app',

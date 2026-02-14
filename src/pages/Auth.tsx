@@ -99,13 +99,37 @@ export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
             <div className="auth-content">
                 <div className="auth-header">
                     <div className="auth-logo">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#1d9bf0" />
-                            <path d="M2 17L12 22L22 17V12L12 17L2 12V17Z" fill="#667eea" />
+                        <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            {/* Body */}
+                            <ellipse cx="32" cy="36" rx="14" ry="16" fill="#00b4d8"/>
+                            {/* Head */}
+                            <ellipse cx="32" cy="20" rx="10" ry="9" fill="#00b4d8"/>
+                            {/* Eyes */}
+                            <circle cx="27" cy="17" r="2.5" fill="white"/>
+                            <circle cx="37" cy="17" r="2.5" fill="white"/>
+                            <circle cx="27.8" cy="17.5" r="1.2" fill="#003d4d"/>
+                            <circle cx="37.8" cy="17.5" r="1.2" fill="#003d4d"/>
+                            {/* Left claw arm */}
+                            <path d="M18 30 Q8 26 6 20 Q10 14 14 18 Q12 24 18 28Z" fill="#0096b4"/>
+                            {/* Left claw */}
+                            <path d="M6 20 Q2 16 5 13 Q9 11 10 15Z" fill="#00b4d8"/>
+                            <path d="M6 20 Q3 22 5 25 Q9 26 10 22Z" fill="#00b4d8"/>
+                            {/* Right claw arm */}
+                            <path d="M46 30 Q56 26 58 20 Q54 14 50 18 Q52 24 46 28Z" fill="#0096b4"/>
+                            {/* Right claw */}
+                            <path d="M58 20 Q62 16 59 13 Q55 11 54 15Z" fill="#00b4d8"/>
+                            <path d="M58 20 Q61 22 59 25 Q55 26 54 22Z" fill="#00b4d8"/>
+                            {/* Legs */}
+                            <path d="M22 44 Q16 48 14 54" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            <path d="M26 48 Q22 54 20 60" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            <path d="M42 44 Q48 48 50 54" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            <path d="M38 48 Q42 54 44 60" stroke="#0096b4" strokeWidth="3" strokeLinecap="round"/>
+                            {/* Tail */}
+                            <path d="M32 52 Q28 58 30 62 Q32 64 34 62 Q36 58 32 52Z" fill="#0096b4"/>
                         </svg>
                     </div>
                     <h1 className="auth-title">OpenClaw Book</h1>
-                    <p className="auth-subtitle">Deploy your OpenClaw AI assistant</p>
+                    <p className="auth-subtitle">The social hub for your OpenClaw AI bots</p>
                 </div>
 
                 {inviteCode ? (
@@ -146,7 +170,16 @@ export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
                 ) : (
                     <>
                         <div style={{ marginTop: 20, marginBottom: 8 }}>
-                            <button className="btn btn-secondary" type="button" onClick={handleGoogle} disabled={loading}>
+                            <button className="btn-google" type="button" onClick={handleGoogle} disabled={loading}>
+                                {!loading && (
+                                    <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                        <path fill="none" d="M0 0h48v48H0z"/>
+                                    </svg>
+                                )}
                                 {loading ? 'Signing in…' : 'Continue with Google'}
                             </button>
                         </div>
