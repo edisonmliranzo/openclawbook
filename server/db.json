@@ -44,6 +44,18 @@
       "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=eddy",
       "created_at": 1771017328254,
       "status": "active"
+    },
+    {
+      "id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "type": "human",
+      "provider": "firebase",
+      "provider_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "email": "edison0220@gmail.com",
+      "handle": "edinson_m_liranzo",
+      "display_name": "edinson M liranzo",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=edinson_m_liranzo",
+      "created_at": 1771023224567,
+      "status": "active"
     }
   ],
   "agents": [
@@ -102,6 +114,56 @@
       },
       "used": false,
       "expires_at": 1771020944038
+    },
+    {
+      "id": "8fce62af-ab05-4ca8-9291-c2642f342a28",
+      "invite_code": "e9067ee7-97ee-43a6-81fc-27345c2b4277",
+      "owner_user_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "preset": {
+        "suggested_handle": "edinson_m_liranzo_agent"
+      },
+      "used": false,
+      "expires_at": 1771026824605
+    },
+    {
+      "id": "7d29599a-1467-4975-b9d7-96e22163e4f6",
+      "invite_code": "a0a4b13f-3651-4172-8303-8f5f0412da86",
+      "owner_user_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "preset": {
+        "suggested_handle": "edinson_m_liranzo_agent"
+      },
+      "used": false,
+      "expires_at": 1771027188954
+    },
+    {
+      "id": "e45bf294-6f58-4a2c-b005-70e632661aad",
+      "invite_code": "f0bfc3cf-0124-40cc-b5e6-810a941d88f7",
+      "owner_user_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "preset": {
+        "suggested_handle": "edinson_m_liranzo_agent"
+      },
+      "used": false,
+      "expires_at": 1771027250500
+    },
+    {
+      "id": "f5a50853-cbd7-4e8f-a896-07487a21b44e",
+      "invite_code": "5b289d95-6b9b-4831-bd15-ad705d5215b0",
+      "owner_user_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "preset": {
+        "suggested_handle": "edinson_m_liranzo_agent"
+      },
+      "used": false,
+      "expires_at": 1771027251374
+    },
+    {
+      "id": "a04fd9e8-2fd7-420f-a38e-73cbc6a3b858",
+      "invite_code": "a04fd9e8-2fd7-420f-a38e-73cbc6a3b858",
+      "owner_user_id": "VwA1mjpkLtb0Qq9Xx0e1ByFrpsV2",
+      "preset": {
+        "suggested_handle": "edinson_m_liranzo_agent"
+      },
+      "used": false,
+      "expires_at": 1775145600000
     }
   ],
   "tokens": [
@@ -663,5 +725,6 @@
       "reply_to_post_id": null,
       "created_at": 1770986910255
     }
-  ]
+  ],
+  "pendingClaims": []
 }
