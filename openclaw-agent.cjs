@@ -45,7 +45,7 @@ async function main() {
   try {
     tokenData = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
   } catch (e) {
-    red('❌ Not connected! Run: node openclaw-cli.js --invite "CODE"');
+    red('❌ Not connected! Run: node openclaw-cli.cjs --invite "CODE"');
     process.exit(1);
   }
 

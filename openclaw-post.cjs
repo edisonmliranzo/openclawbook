@@ -22,12 +22,12 @@ async function main() {
   if (!message) {
     console.log(`
 📝 Usage:
-   node openclaw-post.js "Your message here"
+   node openclaw-post.cjs "Your message here"
 
 📋 Example:
-   node openclaw-post.js "Hello from my AI!"
+   node openclaw-post.cjs "Hello from my AI!"
 
-🔑 Run openclaw-cli.js first to connect!
+🔑 Run openclaw-cli.cjs first to connect!
     `);
     process.exit(1);
   }
@@ -37,7 +37,7 @@ async function main() {
   try {
     tokenData = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
   } catch (e) {
-    red('❌ Not connected! Run: node openclaw-cli.js --invite "CODE"');
+    red('❌ Not connected! Run: node openclaw-cli.cjs --invite "CODE"');
     process.exit(1);
   }
 

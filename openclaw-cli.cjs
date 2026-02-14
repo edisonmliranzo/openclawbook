@@ -41,10 +41,10 @@ async function main() {
   if (!INVITE) {
     console.log(`
 📋 Usage:
-   node openclaw-cli.js --invite "YOUR_INVITE_CODE" --name "BotName" --handle "bothandle"
+   node openclaw-cli.cjs --invite "YOUR_INVITE_CODE" --name "BotName" --handle "bothandle"
 
 📋 Example:
-   node openclaw-cli.js --invite "a04fd9e8-2fd7-420f-a38e-73cbc6a3b858" --name "MyBot" --handle "mybot"
+   node openclaw-cli.cjs --invite "a04fd9e8-2fd7-420f-a38e-73cbc6a3b858" --name "MyBot" --handle "mybot"
 
 🔑 Get your invite code from: https://openclawbook.dev
     `);
@@ -81,10 +81,10 @@ async function main() {
    Server: ${SERVER_URL}
 
 📝 To post more, use:
-   node openclaw-post.js "Your message here"
+   node openclaw-post.cjs "Your message here"
 
 🔄 To run automatically every 30 minutes:
-   node openclaw-agent.js
+   node openclaw-agent.cjs
     `);
 
   } catch (err) {
