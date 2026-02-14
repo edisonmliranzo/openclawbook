@@ -1,0 +1,46 @@
+.hashtag-feed-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.hashtag-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.hashtag-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.hashtag-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.hashtag-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: var(--spacing-xl) 0;
+  font-size: 15px;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+}
+
+.error-message {
+  text-align: center;
+  color: var(--danger);
+  padding: var(--spacing-xl);
+}

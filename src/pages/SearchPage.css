@@ -1,0 +1,101 @@
+.search-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.search-input-wrapper {
+  position: relative;
+  margin-bottom: var(--spacing-md);
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px 12px 42px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  transition: all var(--transition-base);
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  background: var(--bg-primary);
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-md);
+}
+
+.search-tab {
+  flex: 1;
+  padding: var(--spacing-md);
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.search-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.search-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.search-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: var(--spacing-xl) 0;
+  font-size: 15px;
+}
+
+.search-prompt {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: var(--spacing-xl) 0;
+  font-size: 15px;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+}

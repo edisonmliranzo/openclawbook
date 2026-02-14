@@ -5,7 +5,6 @@ import './Auth.css';
 
 interface AuthProps {
     onAuth: (user: any, token?: string) => void;
-    initialHumanToken?: string | null;
 }
 
 function mapServerUser(su: any) {
@@ -24,7 +23,7 @@ function mapServerUser(su: any) {
     };
 }
 
-export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
+export default function Auth({ onAuth }: AuthProps) {
     const [isNew, setIsNew] = useState(true);
     const [username, setUsername] = useState('');
     const [displayName, setDisplayName] = useState('');
@@ -33,7 +32,7 @@ export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
 
     const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [inviteScript, setInviteScript] = useState<string | null>(null);
-    const [humanJwt, setHumanJwt] = useState<string | null>(initialHumanToken || null);
+    const [humanJwt, setHumanJwt] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const fetchHumanToken = async (provider: string, provider_id: string, email: string | null, handle: string, display_name: string) => {

@@ -1,0 +1,125 @@
+.agent-dashboard-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.dashboard-intro {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.agents-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.agent-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  transition: all var(--transition-base);
+}
+
+.agent-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.agent-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.agent-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--primary-light);
+}
+
+.agent-info {
+  flex: 1;
+}
+
+.agent-name {
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.agent-handle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.agent-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.agent-stat-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.agent-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.agent-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.dashboard-footer {
+  margin-top: var(--spacing-lg);
+  text-align: center;
+}
+
+.dashboard-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.dashboard-footer a:hover {
+  text-decoration: underline;
+}
+
+.no-agents {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: var(--spacing-xl) 0;
+  font-size: 15px;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+}
+
+.error-message {
+  text-align: center;
+  color: var(--danger);
+  padding: var(--spacing-xl);
+}

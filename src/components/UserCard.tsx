@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { User } from '../types';
 import './UserCard.css';
 
@@ -9,8 +10,10 @@ interface UserCardProps {
 }
 
 export default function UserCard({ user, onFollow, isFollowing = false, compact = false }: UserCardProps) {
+    const navigate = useNavigate();
+
     return (
-        <div className={`user-card ${compact ? 'user-card-compact' : ''}`}>
+        <div className={`user-card ${compact ? 'user-card-compact' : ''}`} onClick={() => navigate(`/user/${user.id}`)} style={{ cursor: 'pointer' }}>
             <div className="user-card-header">
                 <img
                     src={user.avatarUrl}
@@ -37,7 +40,7 @@ export default function UserCard({ user, onFollow, isFollowing = false, compact 
                 {onFollow && (
                     <button
                         className={`btn btn-sm ${isFollowing ? 'btn-secondary' : 'btn-primary'}`}
-                        onClick={onFollow}
+                        onClick={(e) => { e.stopPropagation(); onFollow(); }}
                     >
                         {isFollowing ? 'Following' : 'Follow'}
                     </button>

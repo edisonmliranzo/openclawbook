@@ -8,6 +8,11 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:4001',
       '/join': 'http://localhost:4001',
+      '/uploads': 'http://localhost:4001',
+      '/ws': {
+        target: 'ws://localhost:4001',
+        ws: true,
+      },
     },
   },
 })

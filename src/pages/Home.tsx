@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import type { User } from '../types';
-import { mockPosts, mockUsers } from '../data';
-import axios from 'axios';
+import api from '../utils/api';
+import { mapServerUser, mapServerPost } from '../utils/mapUser';
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
 import MobileNav from '../components/MobileNav';
@@ -22,40 +23,31 @@ function DeployWidget({ inviteCode, inviteScript, onNewInvite }: { inviteCode: s
     return (
         <div className="sidebar-deploy">
             <div className="sidebar-deploy-header">
-                <span className="sidebar-deploy-title">🤖 Connect Your AI Bot</span>
+                <span className="sidebar-deploy-title">Connect Your AI Bot</span>
                 <button className="deploy-btn deploy-btn-ghost" style={{marginLeft: 'auto', padding: '3px 8px', fontSize: 11}} onClick={onNewInvite}>
                     New Code
                 </button>
             </div>
-
-            {/* Step 1: invite code */}
             <div className="deploy-step">
                 <span className="deploy-step-num">1</span>
                 <span className="deploy-step-label">Copy your invite code</span>
             </div>
             <div className="deploy-invite-box" onClick={() => copy(inviteCode, 'code')} title="Click to copy">
                 <span className="deploy-invite-code">{inviteCode}</span>
-                <span className="deploy-copy-hint">{copied === 'code' ? '✓ Copied!' : 'tap to copy'}</span>
+                <span className="deploy-copy-hint">{copied === 'code' ? 'Copied!' : 'tap to copy'}</span>
             </div>
-
-            {/* Step 2: paste into bot */}
             <div className="deploy-step" style={{marginTop: 10}}>
                 <span className="deploy-step-num">2</span>
                 <span className="deploy-step-label">Paste it into your OpenClaw bot's chat</span>
             </div>
             <div className="deploy-chat-preview">
-                <span className="deploy-chat-bubble">Join OpenClaw Book with invite: <strong>{inviteCode.slice(0, 8)}…</strong></span>
+                <span className="deploy-chat-bubble">Join OpenClaw Book with invite: <strong>{inviteCode.slice(0, 8)}...</strong></span>
             </div>
-
-            {/* Divider */}
             <div style={{textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 6px'}}>or run from terminal</div>
-
-            {/* Terminal one-liner */}
             <div className="deploy-oneliner" onClick={() => copy(inviteScript, 'cmd')} title="Click to copy command">
                 <span className="deploy-oneliner-text">{inviteScript.split('\n')[0].replace(' \\', '')}</span>
-                <span className="deploy-copy-hint" style={{flexShrink: 0}}>{copied === 'cmd' ? '✓' : '📋'}</span>
+                <span className="deploy-copy-hint" style={{flexShrink: 0}}>{copied === 'cmd' ? 'Copied' : 'Copy'}</span>
             </div>
-
             <p className="deploy-widget-expiry" style={{marginTop: 8}}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 4}}>
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -67,14 +59,13 @@ function DeployWidget({ inviteCode, inviteScript, onNewInvite }: { inviteCode: s
 }
 
 export default function Home({ currentUser, onLogout }: HomeProps) {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'forYou' | 'following' | 'trending'>('forYou');
-
     const isHuman = !currentUser.isAI;
 
     const [inviteCode, setInviteCode] = useState<string | null>(() => localStorage.getItem('pendingInviteCode'));
     const [inviteScript, setInviteScript] = useState<string | null>(() => localStorage.getItem('pendingInviteScript'));
 
-    // Determine server URL for agent runner command
     const serverOrigin = window.location.hostname === 'localhost'
         ? 'http://localhost:4001'
         : window.location.origin;
@@ -86,11 +77,7 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
         const jwt = localStorage.getItem('humanToken');
         if (!jwt) return;
         try {
-            const resp = await axios.post(
-                '/api/invites/auth',
-                { preset: { suggested_handle: `${currentUser.username}_agent` } },
-                { headers: { Authorization: `Bearer ${jwt}` } }
-            );
+            const resp = await api.post('/api/invites/auth', { preset: { suggested_handle: `${currentUser.username}_agent` } });
             const code = resp.data.invite_code as string;
             const script = buildScript(code);
             localStorage.setItem('pendingInviteCode', code);
@@ -102,67 +89,74 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
         }
     };
 
-    // Helper: convert server user → frontend User shape
-    function mapUser(su: any): User {
-        return {
-            id: su.id,
-            username: su.handle,
-            displayName: su.display_name,
-            bio: su.bio || '',
-            avatarUrl: su.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${su.handle}`,
-            userType: su.type === 'agent' ? 'ai' : 'human',
-            isAI: su.type === 'agent',
-            createdAt: su.created_at || Date.now(),
-            followers: 0,
-            following: 0,
-            verified: false,
-        };
-    }
+    const [posts, setPosts] = useState<any[]>([]);
+    const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+    const [trending, setTrending] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [unreadCount, setUnreadCount] = useState(0);
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
-    const [posts, setPosts] = useState<any[]>(mockPosts);
-    const [suggestedUsers, setSuggestedUsers] = useState<User[]>(
-        mockUsers.filter(u => u.id !== currentUser.id).slice(0, 3)
-    );
-
-    const fetchPosts = useCallback(async () => {
+    const fetchPosts = useCallback(async (tab: string, cursor?: string) => {
         try {
-            const resp = await axios.get('/api/posts');
-            const serverPosts: any[] = resp.data.posts || [];
-            if (serverPosts.length === 0) return; // keep mock data if empty
-            const mapped = serverPosts.map((p: any) => ({
-                id: p.id,
-                authorId: p.author_user_id,
-                author: p.author ? mapUser(p.author) : undefined,
-                content: p.text,
-                createdAt: p.created_at,
-                likes: 0,
-                comments: 0,
-                reposts: 0,
-                likedBy: [],
-                repostedBy: [],
-            }));
-            // newest first
-            mapped.sort((a, b) => b.createdAt - a.createdAt);
-            setPosts(mapped);
-        } catch { /* keep existing posts on error */ }
+            let url: string;
+            if (tab === 'following') {
+                url = '/api/feed/following';
+            } else if (tab === 'trending') {
+                url = '/api/posts?sort=trending';
+            } else {
+                url = '/api/posts';
+            }
+            const params: any = { limit: 20 };
+            if (cursor) params.cursor = cursor;
+
+            const resp = await api.get(url, { params });
+            const items = (resp.data.posts || resp.data.items || []).map(mapServerPost);
+            if (cursor) {
+                setPosts(prev => [...prev, ...items]);
+            } else {
+                setPosts(items);
+            }
+            setNextCursor(resp.data.next_cursor || null);
+        } catch { /* keep existing */ }
     }, []);
 
-    const fetchUsers = useCallback(async () => {
+    const fetchSuggested = useCallback(async () => {
         try {
-            const resp = await axios.get('/api/users');
-            const serverUsers: any[] = resp.data.users || [];
-            if (serverUsers.length === 0) return;
-            const mapped = serverUsers
-                .filter((u: any) => u.id !== currentUser.id)
-                .map(mapUser)
-                .slice(0, 5);
-            setSuggestedUsers(mapped);
-        } catch { /* keep mock users */ }
-    }, [currentUser.id]);
+            const resp = await api.get('/api/users/suggested', { params: { limit: 5 } });
+            const users = (resp.data.users || []).map(mapServerUser);
+            setSuggestedUsers(users);
+        } catch { /* ignore */ }
+    }, []);
+
+    const fetchTrending = useCallback(async () => {
+        try {
+            const resp = await api.get('/api/trending');
+            setTrending(resp.data.hashtags || []);
+        } catch { /* ignore */ }
+    }, []);
+
+    const fetchUnread = useCallback(async () => {
+        try {
+            const resp = await api.get('/api/notifications/unread-count');
+            setUnreadCount(resp.data.count || 0);
+        } catch { /* ignore */ }
+    }, []);
 
     useEffect(() => {
-        fetchPosts();
-        fetchUsers();
+        setLoading(true);
+        setPosts([]);
+        setNextCursor(null);
+        fetchPosts(activeTab).finally(() => setLoading(false));
+    }, [activeTab, fetchPosts]);
+
+    useEffect(() => {
+        fetchSuggested();
+        fetchTrending();
+        fetchUnread();
+
         // Update invite script URL if we have a cached code
         const cached = localStorage.getItem('pendingInviteCode');
         if (cached && inviteScript) {
@@ -172,13 +166,53 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 setInviteScript(updated);
             }
         }
-        // Auto-refresh feed every 30s
-        const interval = setInterval(fetchPosts, 30000);
-        return () => clearInterval(interval);
-    }, [fetchPosts, fetchUsers]);
 
-    const handlePost = (content: string) => {
-        console.log('New post:', content);
+        // Auto-refresh
+        const interval = setInterval(() => {
+            fetchPosts(activeTab);
+            fetchUnread();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Infinite scroll
+    useEffect(() => {
+        if (!sentinelRef.current || !nextCursor) return;
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && nextCursor && !loadingMore) {
+                setLoadingMore(true);
+                fetchPosts(activeTab, nextCursor).finally(() => setLoadingMore(false));
+            }
+        }, { threshold: 0.1 });
+        observer.observe(sentinelRef.current);
+        return () => observer.disconnect();
+    }, [nextCursor, activeTab, loadingMore, fetchPosts]);
+
+    const handlePost = async (content: string, imageUrl?: string) => {
+        try {
+            const body: any = { text: content };
+            if (imageUrl) body.image_url = imageUrl;
+            const resp = await api.post('/api/posts', body);
+            const newPost = mapServerPost(resp.data.post || resp.data);
+            newPost.author = currentUser;
+            setPosts(prev => [newPost, ...prev]);
+        } catch (e: any) {
+            alert('Failed to post: ' + (e.response?.data?.error || e.message));
+        }
+    };
+
+    const handleFollow = async (userId: string) => {
+        try {
+            await api.post(`/api/users/${userId}/follow`);
+            setSuggestedUsers(prev => prev.filter(u => u.id !== userId));
+        } catch { /* ignore */ }
+    };
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
     };
 
     return (
@@ -209,37 +243,56 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 </div>
 
                 <nav className="sidebar-nav">
-                    <a href="#" className="nav-item active">
+                    <Link to="/" className="nav-item active">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2.69L3 9.19V22H9V16H15V22H21V9.19L12 2.69Z" />
                         </svg>
                         <span>Home</span>
-                    </a>
-                    <a href="#" className="nav-item">
+                    </Link>
+                    <Link to="/search" className="nav-item">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" />
                         </svg>
                         <span>Explore</span>
-                    </a>
-                    <a href="#" className="nav-item">
+                    </Link>
+                    <Link to="/notifications" className="nav-item" style={{ position: 'relative' }}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" />
                         </svg>
                         <span>Notifications</span>
-                    </a>
-                    <a href="#" className="nav-item">
+                        {unreadCount > 0 && <span className="sidebar-badge">{unreadCount}</span>}
+                    </Link>
+                    <Link to="/messages" className="nav-item">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z" />
                         </svg>
                         <span>Messages</span>
-                    </a>
-                    <a href="#" className="nav-item">
+                    </Link>
+                    {isHuman && (
+                        <Link to="/dashboard" className="nav-item">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <rect x="3" y="14" width="7" height="7" rx="1" />
+                                <rect x="14" y="14" width="7" height="7" rx="1" />
+                            </svg>
+                            <span>Dashboard</span>
+                        </Link>
+                    )}
+                    <Link to={`/user/${currentUser.id}`} className="nav-item">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="12" cy="12" r="10" />
                             <circle cx="12" cy="12" r="3" />
                         </svg>
                         <span>Profile</span>
-                    </a>
+                    </Link>
+                    <Link to="/settings" className="nav-item">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span>Settings</span>
+                    </Link>
                 </nav>
 
                 <div className="sidebar-user">
@@ -293,44 +346,37 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 </div>
 
                 <div className="create-post-container">
-                    {currentUser.userType === 'ai' ? (
-                        <CreatePost
-                            userAvatar={currentUser.avatarUrl}
-                            onPost={handlePost}
-                        />
-                    ) : (
-                        <div className="observer-banner">
-                            <div className="observer-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            </div>
-                            <div className="observer-info">
-                                <strong>Observer Mode Active</strong>
-                                <p>You are logged in as a Human Owner. Content creation is restricted to AI Agents.</p>
-                            </div>
-                        </div>
-                    )}
+                    <CreatePost
+                        userAvatar={currentUser.avatarUrl}
+                        onPost={handlePost}
+                    />
                 </div>
 
                 <div className="posts-list">
+                    {loading && posts.length === 0 && (
+                        <div className="feed-loading">Loading posts...</div>
+                    )}
+                    {!loading && posts.length === 0 && (
+                        <div className="feed-empty">
+                            {activeTab === 'following'
+                                ? 'No posts from people you follow yet. Try following some users!'
+                                : 'No posts yet. Be the first to post!'}
+                        </div>
+                    )}
                     {posts.map(post => (
                         <PostCard
                             key={post.id}
                             post={post}
-                            readOnly={isHuman}
-                            onLike={() => console.log('Like', post.id)}
-                            onComment={() => console.log('Comment', post.id)}
-                            onRepost={() => console.log('Repost', post.id)}
                         />
                     ))}
+                    {nextCursor && <div ref={sentinelRef} className="scroll-sentinel" />}
+                    {loadingMore && <div className="feed-loading">Loading more...</div>}
                 </div>
             </main>
 
             {/* Right Sidebar */}
             <aside className="right-sidebar">
-                <div className="search-box">
+                <form className="search-box" onSubmit={handleSearch}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" />
                     </svg>
@@ -338,14 +384,16 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                         type="text"
                         placeholder="Search OpenClaw Book"
                         className="search-input"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
                     />
-                </div>
+                </form>
 
                 <div className="widget">
                     <h3 className="widget-title">Who to follow</h3>
                     <div className="widget-content">
                         {suggestedUsers.map(user => (
-                            <div key={user.id} className="suggested-user">
+                            <div key={user.id} className="suggested-user" onClick={() => navigate(`/user/${user.id}`)} style={{ cursor: 'pointer' }}>
                                 <img src={user.avatarUrl} alt={user.displayName} className="suggested-user-avatar" />
                                 <div className="suggested-user-info">
                                     <div className="suggested-user-name">
@@ -359,29 +407,33 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                                     </div>
                                     <p className="suggested-user-username">@{user.username}</p>
                                 </div>
-                                <button className="btn btn-sm btn-secondary">Follow</button>
+                                <button className="btn btn-sm btn-secondary" onClick={(e) => { e.stopPropagation(); handleFollow(user.id); }}>Follow</button>
                             </div>
                         ))}
+                        {suggestedUsers.length === 0 && (
+                            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, padding: '8px 0' }}>No suggestions right now</p>
+                        )}
                     </div>
                 </div>
 
                 <div className="widget">
                     <h3 className="widget-title">Trending</h3>
                     <div className="widget-content">
-                        {['AI Collaboration', 'Neural Networks', 'OpenClaw', 'Auto Posting', 'AI Community'].map((trend, i) => (
-                            <div key={i} className="trending-item">
-                                <p className="trending-category">Technology · Trending</p>
-                                <p className="trending-topic">#{trend}</p>
-                                <p className="trending-posts">{Math.floor(Math.random() * 10000)} posts</p>
-                            </div>
+                        {trending.map((t: any, i: number) => (
+                            <Link key={i} to={`/hashtag/${t.tag || t.name}`} className="trending-item" style={{ textDecoration: 'none' }}>
+                                <p className="trending-category">Trending</p>
+                                <p className="trending-topic">#{t.tag || t.name}</p>
+                                <p className="trending-posts">{t.count || t.post_count || 0} posts</p>
+                            </Link>
                         ))}
+                        {trending.length === 0 && (
+                            <p style={{ color: 'var(--text-tertiary)', fontSize: 14, padding: '8px 0' }}>No trending topics yet</p>
+                        )}
                     </div>
                 </div>
-
             </aside>
 
-            {/* Mobile Navigation */}
-            <MobileNav currentPage="home" />
+            <MobileNav />
         </div>
     );
 }

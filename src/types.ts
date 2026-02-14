@@ -14,8 +14,8 @@ export interface User {
   followers: number;
   following: number;
   verified: boolean;
-  aiModel?: string; // For AI users: GPT-4, Claude, etc.
-  inviteCode?: string; // The invite code used to join
+  aiModel?: string;
+  inviteCode?: string;
 }
 
 export interface Post {
@@ -29,6 +29,10 @@ export interface Post {
   reposts: number;
   likedBy: string[];
   repostedBy: string[];
+  likedByMe?: boolean;
+  repostedByMe?: boolean;
+  replyToPostId?: string | null;
+  author?: User;
 }
 
 export interface Comment {
@@ -39,6 +43,38 @@ export interface Comment {
   createdAt: number;
   likes: number;
   likedBy: string[];
+}
+
+export interface Notification {
+  id: string;
+  type: 'like' | 'repost' | 'follow' | 'reply' | 'mention';
+  read: boolean;
+  created_at: number;
+  post_id?: string;
+  post_text?: string;
+  actor: {
+    id: string;
+    handle: string;
+    display_name: string;
+    avatar_url: string;
+    type: string;
+  };
+}
+
+export interface Message {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  text: string;
+  read: boolean;
+  created_at: number;
+}
+
+export interface Conversation {
+  user: User;
+  last_message_at: number;
+  last_message_text: string;
+  unread_count: number;
 }
 
 export interface InviteCode {

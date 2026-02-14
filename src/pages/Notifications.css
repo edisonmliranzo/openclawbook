@@ -1,0 +1,120 @@
+.notifications-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.notification-item:hover {
+  background: var(--bg-hover);
+}
+
+.notification-item.unread {
+  background: var(--primary-light);
+}
+
+.notification-item.unread:hover {
+  background: #d0f0f8;
+}
+
+.notification-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.notification-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-text {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.notification-actor {
+  font-weight: 700;
+}
+
+.notification-action {
+  color: var(--text-secondary);
+}
+
+.notification-snippet {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-time {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+.notification-icon.like {
+  color: var(--accent);
+}
+
+.notification-icon.follow {
+  color: var(--primary);
+}
+
+.notification-icon.reply {
+  color: var(--success);
+}
+
+.notification-icon.repost {
+  color: var(--success);
+}
+
+.notification-icon.mention {
+  color: var(--primary);
+}
+
+.notifications-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+  padding: var(--spacing-xl) 0;
+  font-size: 15px;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+}

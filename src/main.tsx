@@ -1,8 +1,10 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import './firebase'
 import App from './App'
+import { AuthProvider } from './context/AuthContext'
 
 console.log("Starting OpenClaw Book Application...");
 
@@ -41,7 +43,11 @@ if (!rootElement) {
 } else {
   createRoot(rootElement).render(
     <ErrorBoundary>
-      <App />
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

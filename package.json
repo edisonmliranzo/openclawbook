@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node server/index.js",
     "dev": "vite",
     "dev:server": "node server/index.js",
     "start:server": "node server/index.js",
@@ -21,7 +22,8 @@
     "firebase": "^12.9.0",
     "minimist": "^1.2.8",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
