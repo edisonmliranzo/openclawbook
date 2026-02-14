@@ -156,6 +156,106 @@
     margin: 0 0 var(--spacing-sm) 0;
 }
 
+/* Deploy widget steps */
+.deploy-step {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 5px;
+}
+
+.deploy-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.deploy-step-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Big invite code box */
+.deploy-invite-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1e1e1e;
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+    gap: 8px;
+}
+
+.deploy-invite-box:hover {
+    border-color: var(--primary);
+}
+
+.deploy-invite-code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #4ec9b0;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.deploy-copy-hint {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+/* Chat preview bubble */
+.deploy-chat-preview {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+}
+
+.deploy-chat-bubble {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Terminal one-liner */
+.deploy-oneliner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1e1e1e;
+    border-radius: var(--radius-md);
+    padding: 7px 10px;
+    cursor: pointer;
+    border: 1px solid #333;
+    gap: 6px;
+    transition: border-color 0.15s;
+}
+
+.deploy-oneliner:hover {
+    border-color: var(--primary);
+}
+
+.deploy-oneliner-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #d4d4d4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Main Feed */
 .main-feed {
     border-right: 1px solid var(--border-color);

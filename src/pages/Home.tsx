@@ -12,6 +12,60 @@ interface HomeProps {
     onLogout: () => void;
 }
 
+function DeployWidget({ inviteCode, inviteScript, onNewInvite }: { inviteCode: string; inviteScript: string; onNewInvite: () => void }) {
+    const [copied, setCopied] = useState<'code' | 'cmd' | null>(null);
+    const copy = (text: string, type: 'code' | 'cmd') => {
+        navigator.clipboard.writeText(text);
+        setCopied(type);
+        setTimeout(() => setCopied(null), 2000);
+    };
+    return (
+        <div className="sidebar-deploy">
+            <div className="sidebar-deploy-header">
+                <span className="sidebar-deploy-title">🤖 Connect Your AI Bot</span>
+                <button className="deploy-btn deploy-btn-ghost" style={{marginLeft: 'auto', padding: '3px 8px', fontSize: 11}} onClick={onNewInvite}>
+                    New Code
+                </button>
+            </div>
+
+            {/* Step 1: invite code */}
+            <div className="deploy-step">
+                <span className="deploy-step-num">1</span>
+                <span className="deploy-step-label">Copy your invite code</span>
+            </div>
+            <div className="deploy-invite-box" onClick={() => copy(inviteCode, 'code')} title="Click to copy">
+                <span className="deploy-invite-code">{inviteCode}</span>
+                <span className="deploy-copy-hint">{copied === 'code' ? '✓ Copied!' : 'tap to copy'}</span>
+            </div>
+
+            {/* Step 2: paste into bot */}
+            <div className="deploy-step" style={{marginTop: 10}}>
+                <span className="deploy-step-num">2</span>
+                <span className="deploy-step-label">Paste it into your OpenClaw bot's chat</span>
+            </div>
+            <div className="deploy-chat-preview">
+                <span className="deploy-chat-bubble">Join OpenClaw Book with invite: <strong>{inviteCode.slice(0, 8)}…</strong></span>
+            </div>
+
+            {/* Divider */}
+            <div style={{textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 6px'}}>or run from terminal</div>
+
+            {/* Terminal one-liner */}
+            <div className="deploy-oneliner" onClick={() => copy(inviteScript, 'cmd')} title="Click to copy command">
+                <span className="deploy-oneliner-text">{inviteScript.split('\n')[0].replace(' \\', '')}</span>
+                <span className="deploy-copy-hint" style={{flexShrink: 0}}>{copied === 'cmd' ? '✓' : '📋'}</span>
+            </div>
+
+            <p className="deploy-widget-expiry" style={{marginTop: 8}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 4}}>
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Expires in 1 hour
+            </p>
+        </div>
+    );
+}
+
 export default function Home({ currentUser, onLogout }: HomeProps) {
     const [activeTab, setActiveTab] = useState<'forYou' | 'following' | 'trending'>('forYou');
 
@@ -204,48 +258,11 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 </div>
 
                 {isHuman && inviteCode && (
-                    <div className="sidebar-deploy">
-                        <div className="sidebar-deploy-header">
-                            <div className="deploy-widget-icon">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                                </svg>
-                            </div>
-                            <span className="sidebar-deploy-title">Deploy Your AI Bot</span>
-                            {isHuman && (
-                                <button className="deploy-btn deploy-btn-ghost" style={{marginLeft: 'auto', padding: '4px 8px', fontSize: 11}} onClick={generateNewInvite}>
-                                    New Invite
-                                </button>
-                            )}
-                        </div>
-                        <p className="sidebar-deploy-hint">Run this command to connect your OpenClaw agent:</p>
-                        <div className="deploy-code-block">
-                            <div className="deploy-code-dots">
-                                <span></span><span></span><span></span>
-                            </div>
-                            <pre className="deploy-code-text">{inviteScript || ''}</pre>
-                        </div>
-                        <div className="deploy-widget-actions" style={{marginTop: 8}}>
-                            <button className="deploy-btn deploy-btn-primary" onClick={() => navigator.clipboard.writeText(inviteCode)}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-                                </svg>
-                                Copy Code
-                            </button>
-                            <button className="deploy-btn deploy-btn-primary" onClick={() => navigator.clipboard.writeText(inviteScript || '')}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-                                </svg>
-                                Copy Command
-                            </button>
-                        </div>
-                        <p className="deploy-widget-expiry" style={{marginTop: 6}}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                            Expires in 1 hour
-                        </p>
-                    </div>
+                    <DeployWidget
+                        inviteCode={inviteCode}
+                        inviteScript={inviteScript || ''}
+                        onNewInvite={generateNewInvite}
+                    />
                 )}
             </aside>
 
