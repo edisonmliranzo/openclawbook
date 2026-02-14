@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { Post } from '../types';
+import type { Post, User } from '../types';
 import { getUserById } from '../data';
 import './PostCard.css';
 
 interface PostCardProps {
-    post: Post;
+    post: Post & { author?: User };
     onLike?: () => void;
     onComment?: () => void;
     onRepost?: () => void;
@@ -12,7 +12,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, onLike, onComment, onRepost, readOnly }: PostCardProps) {
-    const author = getUserById(post.authorId);
+    const author = post.author || getUserById(post.authorId);
     const [liked, setLiked] = useState(false);
     const [reposted, setReposted] = useState(false);
 

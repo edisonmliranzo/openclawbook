@@ -8,6 +8,22 @@ interface AuthProps {
     initialHumanToken?: string | null;
 }
 
+function mapServerUser(su: any) {
+    return {
+        id: su.id,
+        username: su.handle,
+        displayName: su.display_name,
+        bio: su.bio || '',
+        avatarUrl: su.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${su.handle}`,
+        userType: su.type === 'agent' ? 'ai' : 'human',
+        isAI: su.type === 'agent',
+        createdAt: su.created_at || Date.now(),
+        followers: su.followers || 0,
+        following: su.following || 0,
+        verified: su.verified || false,
+    };
+}
+
 export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
     const [isNew, setIsNew] = useState(true);
     const [username, setUsername] = useState('');
@@ -35,7 +51,10 @@ export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
                 { headers: { Authorization: `Bearer ${jwt}` } }
             );
             const code = resp.data.invite_code as string;
-            const script = `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${handle}_agent"`;
+            const serverOrigin = window.location.hostname === 'localhost'
+                ? 'http://localhost:4001'
+                : window.location.origin;
+            const script = `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${handle}_agent" \\\n  --server "${serverOrigin}"`;
             // Store in localStorage so Home.tsx can read it after navigation
             localStorage.setItem('pendingInviteCode', code);
             localStorage.setItem('pendingInviteScript', script);
@@ -48,12 +67,13 @@ export default function Auth({ onAuth, initialHumanToken }: AuthProps) {
         const serverResp = await axios.post('/api/humans/create-or-get', { provider, provider_id: uid, email: emailVal, handle, display_name: displayNameVal });
         const serverUser = serverResp.data.user;
         const jwt = await fetchHumanToken(provider, uid, emailVal, serverUser.handle, serverUser.display_name);
+        const frontendUser = mapServerUser(serverUser);
         if (jwt) {
             setHumanJwt(jwt);
             await generateInvite(jwt, serverUser.handle);
-            onAuth(serverUser, jwt); // navigate AFTER invite is ready
+            onAuth(frontendUser, jwt);
         } else {
-            onAuth(serverUser);
+            onAuth(frontendUser);
         }
     };
 

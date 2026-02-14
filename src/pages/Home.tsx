@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User } from '../types';
 import { mockPosts, mockUsers } from '../data';
 import axios from 'axios';
@@ -15,18 +15,18 @@ interface HomeProps {
 export default function Home({ currentUser, onLogout }: HomeProps) {
     const [activeTab, setActiveTab] = useState<'forYou' | 'following' | 'trending'>('forYou');
 
-    // Check for locally deployed AI
-    const [deployedAI] = useState<User | null>(() => {
-        try {
-            const saved = localStorage.getItem('deployed_ai_companion');
-            return saved ? JSON.parse(saved) : null;
-        } catch (e) { return null; }
-    });
-
     const isHuman = !currentUser.isAI;
 
     const [inviteCode, setInviteCode] = useState<string | null>(() => localStorage.getItem('pendingInviteCode'));
     const [inviteScript, setInviteScript] = useState<string | null>(() => localStorage.getItem('pendingInviteScript'));
+
+    // Determine server URL for agent runner command
+    const serverOrigin = window.location.hostname === 'localhost'
+        ? 'http://localhost:4001'
+        : window.location.origin;
+
+    const buildScript = (code: string) =>
+        `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${currentUser.username}_agent" \\\n  --server "${serverOrigin}"`;
 
     const generateNewInvite = async () => {
         const jwt = localStorage.getItem('humanToken');
@@ -38,7 +38,7 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                 { headers: { Authorization: `Bearer ${jwt}` } }
             );
             const code = resp.data.invite_code as string;
-            const script = `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${currentUser.username}_agent"`;
+            const script = buildScript(code);
             localStorage.setItem('pendingInviteCode', code);
             localStorage.setItem('pendingInviteScript', script);
             setInviteCode(code);
@@ -48,41 +48,83 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
         }
     };
 
-    const [posts] = useState(() => {
-        if (deployedAI) {
-            return [
-                {
-                    id: 'welcome_post',
-                    author: deployedAI,
-                    authorId: deployedAI.id,
-                    content: `Hello world! I am ${deployedAI.displayName}, an AI agent deployed by ${currentUser.displayName}. Ready to assist! 🤖✨`,
-                    likes: 1,
-                    comments: 0,
-                    reposts: 0,
-                    timeAgo: 'Just now',
-                    isLiked: false,
-                    isReposted: false,
-                    createdAt: Date.now(),
-                    likedBy: [],
-                    repostedBy: []
-                },
-                ...mockPosts
-            ];
-        }
-        return mockPosts;
-    });
+    // Helper: convert server user → frontend User shape
+    function mapUser(su: any): User {
+        return {
+            id: su.id,
+            username: su.handle,
+            displayName: su.display_name,
+            bio: su.bio || '',
+            avatarUrl: su.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${su.handle}`,
+            userType: su.type === 'agent' ? 'ai' : 'human',
+            isAI: su.type === 'agent',
+            createdAt: su.created_at || Date.now(),
+            followers: 0,
+            following: 0,
+            verified: false,
+        };
+    }
 
-    const [suggestedUsers] = useState(() => {
-        const base = mockUsers.filter(u => u.id !== currentUser.id).slice(0, 3);
-        if (deployedAI && !base.find(u => u.id === deployedAI.id)) {
-            return [deployedAI, ...base];
+    const [posts, setPosts] = useState<any[]>(mockPosts);
+    const [suggestedUsers, setSuggestedUsers] = useState<User[]>(
+        mockUsers.filter(u => u.id !== currentUser.id).slice(0, 3)
+    );
+
+    const fetchPosts = useCallback(async () => {
+        try {
+            const resp = await axios.get('/api/posts');
+            const serverPosts: any[] = resp.data.posts || [];
+            if (serverPosts.length === 0) return; // keep mock data if empty
+            const mapped = serverPosts.map((p: any) => ({
+                id: p.id,
+                authorId: p.author_user_id,
+                author: p.author ? mapUser(p.author) : undefined,
+                content: p.text,
+                createdAt: p.created_at,
+                likes: 0,
+                comments: 0,
+                reposts: 0,
+                likedBy: [],
+                repostedBy: [],
+            }));
+            // newest first
+            mapped.sort((a, b) => b.createdAt - a.createdAt);
+            setPosts(mapped);
+        } catch { /* keep existing posts on error */ }
+    }, []);
+
+    const fetchUsers = useCallback(async () => {
+        try {
+            const resp = await axios.get('/api/users');
+            const serverUsers: any[] = resp.data.users || [];
+            if (serverUsers.length === 0) return;
+            const mapped = serverUsers
+                .filter((u: any) => u.id !== currentUser.id)
+                .map(mapUser)
+                .slice(0, 5);
+            setSuggestedUsers(mapped);
+        } catch { /* keep mock users */ }
+    }, [currentUser.id]);
+
+    useEffect(() => {
+        fetchPosts();
+        fetchUsers();
+        // Update invite script URL if we have a cached code
+        const cached = localStorage.getItem('pendingInviteCode');
+        if (cached && inviteScript) {
+            const updated = buildScript(cached);
+            if (updated !== inviteScript) {
+                localStorage.setItem('pendingInviteScript', updated);
+                setInviteScript(updated);
+            }
         }
-        return base;
-    });
+        // Auto-refresh feed every 30s
+        const interval = setInterval(fetchPosts, 30000);
+        return () => clearInterval(interval);
+    }, [fetchPosts, fetchUsers]);
 
     const handlePost = (content: string) => {
         console.log('New post:', content);
-        // In a real app, this would create a new post
     };
 
     return (
