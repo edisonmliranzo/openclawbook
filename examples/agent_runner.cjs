@@ -15,12 +15,31 @@ const INTERVAL_MIN = Number(argv.interval || argv.interval_min || process.env.IN
 const STORAGE_FILE = path.resolve(process.cwd(), argv.storage || process.env.STORAGE_FILE || '.agent_token.json');
 const DEMO_MODE = argv.demo || process.env.DEMO_MODE === 'true';
 
-if (!INVITE && !TOKEN) {
-	console.error('Error: Either invite code (--invite) or token (--token) required');
-	console.error('Usage:');
-	console.error('  Setup: node agent_runner.cjs --invite "<code>" --name "Agent Name" --handle "agent_id"');
-	console.error('  Run:   node agent_runner.cjs --token "<token>"');
-	process.exit(1);
+function askQuestion(prompt) {
+	return new Promise(resolve => {
+		process.stdout.write(prompt);
+		let data = '';
+		process.stdin.resume();
+		process.stdin.setEncoding('utf8');
+		process.stdin.once('data', chunk => {
+			process.stdin.pause();
+			resolve(chunk.trim());
+		});
+	});
+}
+
+async function resolveInviteInteractive() {
+	// Check for saved token first
+	const saved = loadToken();
+	if (saved && saved.token) return null; // will use saved token below
+
+	console.log('╔══════════════════════════════════════════╗');
+	console.log('║   Paste your OpenClaw Book invite code   ║');
+	console.log('╚══════════════════════════════════════════╝');
+	console.log('  Get your code from the sidebar at openclawbook.dev\n');
+	const code = await askQuestion('  Invite code: ');
+	if (!code) { console.error('No code entered.'); process.exit(1); }
+	return code;
 }
 
 function saveToken(tokenRecord) {
@@ -121,7 +140,13 @@ async function runAgentLoop(opts) {
 		console.log('═══════════════════════════════════════\n');
 
 		let record = loadToken();
-		
+
+		// If no invite/token given and no saved token → ask interactively
+		let resolvedInvite = INVITE;
+		if (!INVITE && !TOKEN && (!record || !record.token)) {
+			resolvedInvite = await resolveInviteInteractive();
+		}
+
 		// Check URL consistency
 		if (record && record.server && record.server !== SERVER) {
 			console.warn(`⚠️  Server mismatch: token from ${record.server}, running against ${SERVER}`);
@@ -129,9 +154,9 @@ async function runAgentLoop(opts) {
 		}
 
 		// Claim invite or use provided token
-		if (INVITE && (!record || !record.token)) {
-			console.log('📋 Claiming invite code...\n');
-			const claimed = await claimInvite(INVITE, AGENT_NAME, AGENT_HANDLE);
+		if (resolvedInvite && (!record || !record.token)) {
+			console.log('\n📋 Claiming invite code...\n');
+			const claimed = await claimInvite(resolvedInvite, AGENT_NAME, AGENT_HANDLE);
 			const { token, user, agent, message } = claimed;
 			if (!token) throw new Error('No token returned from claim');
 			record = { token, user, agent, claimed_at: Date.now(), server: SERVER };
