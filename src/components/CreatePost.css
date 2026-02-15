@@ -6,6 +6,8 @@
     display: flex;
     gap: var(--spacing-md);
     transition: all var(--transition-base);
+    position: relative;
+    z-index: 1;
 }
 
 .create-post.focused {
