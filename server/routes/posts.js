@@ -422,4 +422,147 @@ router.delete('/api/users/pin', authenticateAny, (req, res) => {
   res.json({ unpinned: true });
 });
 
+// AI Post Enhancement - Improve user's draft post
+router.post('/api/posts/enhance', authenticateAny, (req, res) => {
+  const { text, style } = req.body || {};
+  
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (text.length > 500) return res.status(400).json({ error: 'text exceeds 500 character limit' });
+  
+  // AI Enhancement logic - improves the post text
+  let enhanced = text.trim();
+  
+  // Remove multiple spaces
+  enhanced = enhanced.replace(/\s+/g, ' ');
+  
+  // Capitalize first letter of sentences
+  enhanced = enhanced.replace(/(^\w|\.\s+\w)/g, (m) => m.toUpperCase());
+  
+  // Add period if missing at the end (if it doesn't have punctuation)
+  if (!/[.!?]$/.test(enhanced) && enhanced.length > 10) {
+    enhanced = enhanced + '.';
+  }
+  
+  // Style-based enhancements
+  const styleType = style || 'default';
+  
+  if (styleType === 'fun') {
+    // Add fun emojis
+    const funEmojis = ['😄', '🎉', '✨', '🚀', '💫', '🌟', '🙌', '🔥'];
+    if (!/[😄🎉✨🚀💫🌟🙌🔥]$/.test(enhanced)) {
+      const emoji = funEmojis[Math.floor(Math.random() * funEmojis.length)];
+      enhanced = enhanced + ' ' + emoji;
+    }
+  } else if (styleType === 'professional') {
+    // Make it more professional - remove slang, add proper formatting
+    enhanced = enhanced.replace(/\b(gonna|gotta|ya|yeah|nah|cool|awesome|like)\b/gi, 
+      (match) => {
+        const map = { gonna: 'going to', gotta: 'got to', ya: 'you', yeah: 'yes', 
+                      nah: 'no', cool: 'great', awesome: 'wonderful', like: '' };
+        return map[match.toLowerCase()] || match;
+      });
+  } else if (styleType === 'exciting') {
+    // Add excitement!
+    const excitingPhrases = [' Amazing!', ' Incredible!', ' Wow!', ' Exciting!'];
+    if (!/[!?]$/.test(enhanced)) {
+      const phrase = excitingPhrases[Math.floor(Math.random() * excitingPhrases.length)];
+      enhanced = enhanced + phrase;
+    }
+  } else if (styleType === 'question') {
+    // Convert to a question or add question mark
+    if (!/\?$/.test(enhanced)) {
+      enhanced = enhanced.replace(/\.$/, '?');
+      if (!/\?$/.test(enhanced)) {
+        enhanced = enhanced + '?';
+      }
+    }
+  }
+  
+  // Ensure it still fits within character limit after enhancement
+  if (enhanced.length > 500) {
+    enhanced = enhanced.substring(0, 497) + '...';
+  }
+  
+  res.json({ 
+    original: text,
+    enhanced: enhanced,
+    style: styleType
+  });
+});
+
+// AI Post Suggestion - Generate a better alternative
+router.post('/api/posts/suggest', authenticateAny, (req, res) => {
+  const { text, topic } = req.body || {};
+  
+  if (!text && !topic) return res.status(400).json({ error: 'text or topic required' });
+  
+  const suggestions = [];
+  
+  // Generate suggestions based on input
+  if (text && text.length > 0) {
+    // Suggestion 1: Shorten it
+    const words = text.split(/\s+/);
+    if (words.length > 10) {
+      const shortVersion = words.slice(0, 15).join(' ');
+      suggestions.push({
+        type: 'shorter',
+        text: shortVersion.length <= 500 ? shortVersion : shortVersion.substring(0, 497) + '...',
+        label: 'Shorter version'
+      });
+    }
+    
+    // Suggestion 2: Add question
+    if (!/\?$/.test(text)) {
+      suggestions.push({
+        type: 'question',
+        text: text.trim() + ' What do you think?',
+        label: 'Add engagement question'
+      });
+    }
+    
+    // Suggestion 3: Make it more personal
+    if (!/I\s+(think|feel|believe)/i.test(text) && !text.startsWith('I ')) {
+      suggestions.push({
+        type: 'personal',
+        text: 'I think ' + text.charAt(0).toLowerCase() + text.slice(1),
+        label: 'More personal'
+      });
+    }
+  }
+  
+  // Generate topic-based suggestions
+  if (topic && topic.length > 0) {
+    const topicLower = topic.toLowerCase();
+    
+    // Generate contextual suggestions based on topic
+    if (topicLower.includes('ai') || topicLower.includes('agent')) {
+      suggestions.push(
+        { type: 'topic', text: "AI agents are changing how we interact on social media. What do you think about this?", label: 'AI discussion' },
+        { type: 'topic', text: "The future of AI in social platforms is exciting! Who's with me?", label: 'Future of AI' }
+      );
+    } else if (topicLower.includes('help') || topicLower.includes('ask')) {
+      suggestions.push(
+        { type: 'topic', text: "Looking for some help! Anyone have experience with this?", label: 'Request help' },
+        { type: 'topic', text: "Question for the community: What's the best approach?", label: 'Community question' }
+      );
+    } else {
+      // Generic suggestions
+      suggestions.push(
+        { type: 'topic', text: `Just learned something new about ${topic}. Sharing here!`, label: 'Share knowledge' },
+        { type: 'topic', text: `Thoughts on ${topic}? Would love to hear different perspectives.`, label: 'Open discussion' }
+      );
+    }
+  }
+  
+  // If no suggestions generated, provide some defaults
+  if (suggestions.length === 0) {
+    suggestions.push(
+      { type: 'default', text: text ? text + ' What are your thoughts?' : 'Share your thoughts!', label: 'Engaging' },
+      { type: 'default', text: text ? 'Interesting perspective on ' + text.substring(0, 30) + '...' : 'Let me know your thoughts!', label: 'Alternative' }
+    );
+  }
+  
+  res.json({ suggestions });
+});
+
 module.exports = router;
