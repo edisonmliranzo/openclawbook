@@ -24,12 +24,24 @@ function mapServerUser(su: any) {
     };
 }
 
+interface GoogleSigninData {
+    uid: string;
+    email: string | null;
+    suggestedUsername: string;
+    suggestedDisplayName: string;
+}
+
 export default function Auth({ onAuth }: AuthProps) {
     const [isNew, setIsNew] = useState(true);
     const [username, setUsername] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    
+    const [editingGoogleName, setEditingGoogleName] = useState(false);
+    const [googleSigninData, setGoogleSigninData] = useState<GoogleSigninData | null>(null);
+    const [tempUsername, setTempUsername] = useState('');
+    const [tempDisplayName, setTempDisplayName] = useState('');
 
     const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [inviteScript, setInviteScript] = useState<string | null>(null);
@@ -100,12 +112,45 @@ export default function Auth({ onAuth }: AuthProps) {
         try {
             const result = await signInWithPopup(auth!, googleProvider);
             const u = result.user;
-            await afterLogin('firebase', u.uid, u.email, u.displayName?.toLowerCase().replace(/\s/g, '_') || '', u.displayName || '');
+            const suggestedUsername = u.displayName?.toLowerCase().replace(/\s/g, '_') || '';
+            const suggestedDisplayName = u.displayName || '';
+            
+            // Store the data and show the edit dialog
+            setGoogleSigninData({
+                uid: u.uid,
+                email: u.email,
+                suggestedUsername,
+                suggestedDisplayName,
+            });
+            setTempUsername(suggestedUsername);
+            setTempDisplayName(suggestedDisplayName);
+            setEditingGoogleName(true);
         } catch (err: any) {
             alert('Google sign-in failed: ' + (err.message || err));
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleConfirmGoogleName = async () => {
+        if (!googleSigninData) return;
+        setLoading(true);
+        try {
+            await afterLogin('firebase', googleSigninData.uid, googleSigninData.email, tempUsername, tempDisplayName);
+            setEditingGoogleName(false);
+            setGoogleSigninData(null);
+        } catch (err: any) {
+            alert('Failed to complete sign-in: ' + (err.message || err));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCancelGoogleName = () => {
+        setEditingGoogleName(false);
+        setGoogleSigninData(null);
+        setTempUsername('');
+        setTempDisplayName('');
     };
 
     return (
@@ -250,6 +295,76 @@ export default function Auth({ onAuth }: AuthProps) {
                     </>
                 )}
             </div>
+
+            {editingGoogleName && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #333',
+                        borderRadius: '12px',
+                        padding: '32px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.7)',
+                    }}>
+                        <h2 style={{ marginTop: 0, marginBottom: 8, color: '#fff', fontSize: '1.5em' }}>Customize Your Profile</h2>
+                        <p style={{ marginBottom: 24, color: '#aaa', fontSize: '0.95em' }}>For your privacy, please choose a display name instead of using your full name:</p>
+                        
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', marginBottom: 8, color: '#fff', fontSize: '0.9em', fontWeight: 500 }}>Username</label>
+                            <input 
+                                type="text"
+                                className="input"
+                                value={tempUsername}
+                                onChange={e => setTempUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
+                                placeholder="your_handle"
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                            />
+                            <p style={{ marginTop: 4, color: '#666', fontSize: '0.8em' }}>Lowercase letters, numbers, and underscores only</p>
+                        </div>
+
+                        <div style={{ marginBottom: 24 }}>
+                            <label style={{ display: 'block', marginBottom: 8, color: '#fff', fontSize: '0.9em', fontWeight: 500 }}>Display Name</label>
+                            <input 
+                                type="text"
+                                className="input"
+                                value={tempDisplayName}
+                                onChange={e => setTempDisplayName(e.target.value)}
+                                placeholder="How should we call you?"
+                                style={{ width: '100%', boxSizing: 'border-box' }}
+                            />
+                            <p style={{ marginTop: 4, color: '#666', fontSize: '0.8em' }}>This is how you'll appear on the platform</p>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button 
+                                className="btn"
+                                onClick={handleCancelGoogleName}
+                                disabled={loading}
+                                style={{ flex: 1 }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                className="btn btn-primary"
+                                onClick={handleConfirmGoogleName}
+                                disabled={loading || !tempUsername.trim() || !tempDisplayName.trim()}
+                                style={{ flex: 1 }}
+                            >
+                                {loading ? 'Confirming…' : 'Continue'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
