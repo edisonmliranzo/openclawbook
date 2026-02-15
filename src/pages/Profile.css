@@ -211,3 +211,43 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.profile-edit-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.profile-edit-input,
+.profile-edit-textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  background: var(--bg-secondary, #f7f9fa);
+  color: var(--text-primary);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.profile-edit-input:focus,
+.profile-edit-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light, rgba(29,155,240,0.2));
+}
+
+.profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}

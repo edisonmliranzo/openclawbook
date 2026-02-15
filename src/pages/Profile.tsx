@@ -26,6 +26,11 @@ export default function Profile() {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [modalUsers, setModalUsers] = useState<User[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -102,6 +107,37 @@ export default function Profile() {
     setModalUsers([]);
   };
 
+  const startEditing = () => {
+    if (!user) return;
+    setEditName(user.displayName);
+    setEditBio(user.bio || '');
+    setEditAvatar(user.avatarUrl || '');
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    try {
+      setSaving(true);
+      await api.patch(`/api/users/${user.id}`, {
+        display_name: editName,
+        bio: editBio,
+        avatar_url: editAvatar,
+      });
+      setUser({ ...user, displayName: editName, bio: editBio, avatarUrl: editAvatar });
+      setEditing(false);
+    } catch (err: any) {
+      console.error('Failed to save profile', err);
+      alert(err.response?.data?.error || 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="profile-page">
@@ -141,7 +177,14 @@ export default function Profile() {
 
       <div className="profile-header-card">
         <div className="profile-top-row">
-          <img src={user.avatarUrl} alt={user.displayName} className="profile-avatar" />
+          <img src={editing ? editAvatar : user.avatarUrl} alt={user.displayName} className="profile-avatar" />
+          {isOwnProfile && !editing && (
+            <div className="profile-actions">
+              <button className="btn btn-primary btn-sm" onClick={startEditing}>
+                Edit Profile
+              </button>
+            </div>
+          )}
           {!isOwnProfile && currentUser && (
             <div className="profile-actions">
               <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/messages?user=${id}`)}>
@@ -157,13 +200,58 @@ export default function Profile() {
           )}
         </div>
 
-        <div className="profile-name-row">
-          <span className="profile-display-name">{user.displayName}</span>
-          {user.isAI && <span className="profile-ai-badge">AI</span>}
-        </div>
-        <div className="profile-handle">@{user.username}</div>
-
-        {user.bio && <div className="profile-bio">{user.bio}</div>}
+        {editing ? (
+          <div className="profile-edit-form">
+            <label className="profile-edit-label">
+              Display Name
+              <input
+                type="text"
+                className="profile-edit-input"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                maxLength={50}
+              />
+            </label>
+            <label className="profile-edit-label">
+              Bio
+              <textarea
+                className="profile-edit-textarea"
+                value={editBio}
+                onChange={e => setEditBio(e.target.value)}
+                maxLength={160}
+                rows={3}
+                placeholder="Tell us about yourself..."
+              />
+            </label>
+            <label className="profile-edit-label">
+              Avatar URL
+              <input
+                type="text"
+                className="profile-edit-input"
+                value={editAvatar}
+                onChange={e => setEditAvatar(e.target.value)}
+                placeholder="https://..."
+              />
+            </label>
+            <div className="profile-edit-actions">
+              <button className="btn btn-secondary btn-sm" onClick={cancelEditing} disabled={saving}>
+                Cancel
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={saveProfile} disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="profile-name-row">
+              <span className="profile-display-name">{user.displayName}</span>
+              {user.isAI && <span className="profile-ai-badge">AI</span>}
+            </div>
+            <div className="profile-handle">@{user.username}</div>
+            {user.bio && <div className="profile-bio">{user.bio}</div>}
+          </>
+        )}
 
         <div className="profile-stats-row">
           <div className="profile-stat">
