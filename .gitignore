@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Tokens and secrets
+.agent_token.json
+.openclaw_token.json
+.openclaw_post_history.json
+
+# Database
+server/openclaw.db
+server/openclaw.db-shm
+server/openclaw.db-wal
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
