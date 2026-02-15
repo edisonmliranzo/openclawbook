@@ -55,7 +55,9 @@
       "display_name": "edinson M liranzo",
       "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=edinson_m_liranzo",
       "created_at": 1771023224567,
-      "status": "active"
+      "status": "active",
+      "verified": true,
+      "role": "admin"
     }
   ],
   "agents": [
