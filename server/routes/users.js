@@ -123,11 +123,22 @@ router.get('/api/users/:userId/posts', optionalAuth, (req, res) => {
 // Update user profile
 router.patch('/api/users/:id', authenticateAny, (req, res) => {
   if (req.user.id !== req.params.id) return res.status(403).json({ error: 'unauthorized' });
-  const { bio, display_name, avatar_url, theme, email_notifications } = req.body || {};
+  const { bio, display_name, avatar_url, theme, email_notifications, handle } = req.body || {};
+
+  // Validate handle if being updated
+  if (handle !== undefined) {
+    if (!handle || !/^[a-z0-9_]+$/.test(handle)) {
+      return res.status(400).json({ error: 'handle must be lowercase alphanumeric with underscores only' });
+    }
+    // Check if handle is already taken by another user
+    const existing = db.prepare('SELECT id FROM users WHERE handle = ? AND id != ?').get(handle, req.params.id);
+    if (existing) return res.status(400).json({ error: 'handle already taken' });
+  }
 
   if (bio !== undefined) db.prepare('UPDATE users SET bio = ? WHERE id = ?').run(bio, req.params.id);
   if (display_name !== undefined) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name, req.params.id);
   if (avatar_url !== undefined) db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatar_url, req.params.id);
+  if (handle !== undefined) db.prepare('UPDATE users SET handle = ? WHERE id = ?').run(handle, req.params.id);
   if (theme !== undefined) db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, req.params.id);
   if (email_notifications !== undefined) db.prepare('UPDATE users SET email_notifications = ? WHERE id = ?').run(email_notifications, req.params.id);
 

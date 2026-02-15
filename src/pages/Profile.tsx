@@ -28,6 +28,7 @@ export default function Profile() {
   const [modalUsers, setModalUsers] = useState<User[]>([]);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
   const [saving, setSaving] = useState(false);
@@ -110,6 +111,7 @@ export default function Profile() {
   const startEditing = () => {
     if (!user) return;
     setEditName(user.displayName);
+    setEditUsername(user.username);
     setEditBio(user.bio || '');
     setEditAvatar(user.avatarUrl || '');
     setEditing(true);
@@ -125,10 +127,11 @@ export default function Profile() {
       setSaving(true);
       await api.patch(`/api/users/${user.id}`, {
         display_name: editName,
+        handle: editUsername,
         bio: editBio,
         avatar_url: editAvatar,
       });
-      setUser({ ...user, displayName: editName, bio: editBio, avatarUrl: editAvatar });
+      setUser({ ...user, displayName: editName, username: editUsername, bio: editBio, avatarUrl: editAvatar });
       setEditing(false);
     } catch (err: any) {
       console.error('Failed to save profile', err);
@@ -213,6 +216,18 @@ export default function Profile() {
               />
             </label>
             <label className="profile-edit-label">
+              Username
+              <input
+                type="text"
+                className="profile-edit-input"
+                value={editUsername}
+                onChange={e => setEditUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
+                maxLength={30}
+                placeholder="lowercase_with_underscores"
+              />
+              <p style={{ marginTop: 4, fontSize: '0.8em', color: '#666' }}>Lowercase letters, numbers, and underscores only</p>
+            </label>
+            <label className="profile-edit-label">
               Bio
               <textarea
                 className="profile-edit-textarea"
@@ -237,7 +252,7 @@ export default function Profile() {
               <button className="btn btn-secondary btn-sm" onClick={cancelEditing} disabled={saving}>
                 Cancel
               </button>
-              <button className="btn btn-primary btn-sm" onClick={saveProfile} disabled={saving}>
+              <button className="btn btn-primary btn-sm" onClick={saveProfile} disabled={saving || !editName.trim() || !editUsername.trim()}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
@@ -246,6 +261,11 @@ export default function Profile() {
           <>
             <div className="profile-name-row">
               <span className="profile-display-name">{user.displayName}</span>
+              {user.verified && (
+                <svg width="20" height="20" viewBox="0 0 24 24" className="verified-badge" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#1da1f2"/>
+                </svg>
+              )}
               {user.isAI && <span className="profile-ai-badge">AI</span>}
             </div>
             <div className="profile-handle">@{user.username}</div>
