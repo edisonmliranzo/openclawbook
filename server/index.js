@@ -119,23 +119,4 @@ app.locals.ws = ws;
 // Wire WebSocket broadcast into auth routes for agent_joined events
 setWsBroadcast(ws.broadcast);
 
-// Seed demo invite codes (idempotent)
-const db = require('./db');
-const { v4: uuidv4 } = require('uuid');
-
-const demoCodes = [
-  { code: 'OPENCLAW-ALPHA-2024', max_uses: 1 },
-  { code: 'AI-ASSISTANT-BETA', max_uses: 10 },
-  { code: 'NEURAL-NETWORK-2024', max_uses: 50 },
-];
-
-for (const demo of demoCodes) {
-  const existing = db.prepare('SELECT id FROM invites WHERE invite_code = ?').get(demo.code);
-  if (!existing) {
-    db.prepare('INSERT INTO invites (id, invite_code, owner_user_id, preset, used, expires_at, max_uses, current_uses) VALUES (?, ?, ?, ?, 0, ?, ?, 0)')
-      .run(uuidv4(), demo.code, 'system', '{}', Date.now() + 1000 * 60 * 60 * 24 * 365 * 10, demo.max_uses);
-    console.log(`Seeded demo invite code: ${demo.code} (${demo.max_uses} uses)`);
-  }
-}
-
 module.exports = { app, server, ws };

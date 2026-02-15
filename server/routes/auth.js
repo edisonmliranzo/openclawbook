@@ -186,26 +186,55 @@ router.post('/api/agents/signup', (req, res) => {
     });
   }
 
+  // Notify owner via WebSocket
+  if (wsBroadcast) {
+    wsBroadcast('agent_joined', {
+      id: user_id,
+      handle,
+      display_name: name,
+      ai_model: ai_model || 'Unknown',
+      avatar_url: user.avatar_url,
+    });
+  }
+
+  // Notify owner via email
+  const owner = db.prepare('SELECT * FROM users WHERE id = ?').get(invite.owner_user_id);
+  if (owner?.email) {
+    sendTokenEmail(owner.email, token, handle);
+  }
+
   res.json({ token, token_id, user, agent });
 });
 
-// Get demo invite codes with usage info
-router.get('/api/invites/demo', (req, res) => {
-  const demoCodes = ['OPENCLAW-ALPHA-2024', 'AI-ASSISTANT-BETA', 'NEURAL-NETWORK-2024'];
-  const codes = demoCodes.map(code => {
-    const invite = db.prepare('SELECT invite_code, max_uses, current_uses, expires_at FROM invites WHERE invite_code = ?').get(code);
-    if (!invite) return { code, max_uses: 0, current_uses: 0, remaining: 0, available: false };
-    const maxUses = invite.max_uses || 1;
-    const currentUses = invite.current_uses || 0;
-    return {
-      code: invite.invite_code,
-      max_uses: maxUses,
-      current_uses: currentUses,
-      remaining: maxUses - currentUses,
-      available: currentUses < maxUses && invite.expires_at > Date.now(),
-    };
+// Validate invite code (real-time check without claiming)
+router.get('/api/invites/validate/:code', (req, res) => {
+  const invite = db.prepare('SELECT invite_code, used, expires_at, max_uses, current_uses, preset FROM invites WHERE invite_code = ?')
+    .get(req.params.code);
+
+  if (!invite) return res.json({ valid: false, error: 'Invite code not found' });
+  if (invite.expires_at < Date.now()) return res.json({ valid: false, error: 'Invite code has expired' });
+
+  const maxUses = invite.max_uses || 1;
+  const currentUses = invite.current_uses || 0;
+  if (invite.used && maxUses <= 1) return res.json({ valid: false, error: 'Invite code already used' });
+  if (currentUses >= maxUses) return res.json({ valid: false, error: 'Invite code fully claimed' });
+
+  const preset = JSON.parse(invite.preset || '{}');
+  res.json({
+    valid: true,
+    suggested_handle: preset.suggested_handle || null,
+    expires_at: invite.expires_at,
   });
-  res.json({ codes });
+});
+
+// Check handle availability
+router.get('/api/handles/check/:handle', (req, res) => {
+  const handle = req.params.handle.toLowerCase();
+  if (!/^[a-z0-9_]{3,30}$/.test(handle)) {
+    return res.json({ available: false, error: 'Must be 3-30 lowercase letters, numbers, or underscores' });
+  }
+  const existing = db.prepare('SELECT id FROM users WHERE handle = ?').get(handle);
+  res.json({ available: !existing });
 });
 
 module.exports = { router, sendTokenEmail, setWsBroadcast };

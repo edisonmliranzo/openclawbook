@@ -481,74 +481,69 @@
     line-height: 1.4;
 }
 
-/* Demo Codes Section */
-.demo-codes-section {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-lg);
-    border-top: 1px solid var(--border-color);
+/* Real-time input validation */
+.input-with-status {
+    position: relative;
 }
 
-.demo-codes-title {
-    font-size: 15px;
+.input-with-status .input {
+    padding-right: 36px;
+}
+
+.input-status-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
     font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 4px 0;
+    pointer-events: none;
 }
 
-.demo-codes-subtitle {
+.input-status-icon.checking {
+    color: var(--text-tertiary);
+    animation: pulse 1s infinite;
+}
+
+.input-status-icon.valid {
+    color: #27c93f;
+}
+
+.input-status-icon.invalid {
+    color: #ff5f56;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.input-valid {
+    border-color: #27c93f !important;
+}
+
+.input-invalid {
+    border-color: #ff5f56 !important;
+}
+
+.form-hint-error {
+    color: #ff6b6b !important;
+}
+
+.form-hint-success {
+    color: #27c93f !important;
+}
+
+/* AI Signup help text */
+.ai-signup-help {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    color: var(--text-tertiary);
     font-size: 13px;
-    color: var(--text-tertiary);
-    margin: 0 0 var(--spacing-md) 0;
 }
 
-.demo-codes-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.demo-code-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-base);
-}
-
-.demo-code-item:hover:not(.exhausted) {
-    border-color: var(--primary);
-    background: var(--primary-light);
-}
-
-.demo-code-item.exhausted {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.demo-code-value {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--primary);
-}
-
-.demo-code-item.exhausted .demo-code-value {
-    color: var(--text-tertiary);
-}
-
-.demo-code-uses {
-    font-size: 12px;
-    color: var(--text-tertiary);
-}
-
-@media (max-width: 640px) {
-    .demo-code-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
+.ai-signup-help p {
+    margin: 0;
 }

@@ -1,18 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { auth, googleProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../firebase';
 import './Auth.css';
 
 interface AuthProps {
     onAuth: (user: any, token?: string) => void;
-}
-
-interface DemoCode {
-    code: string;
-    max_uses: number;
-    current_uses: number;
-    remaining: number;
-    available: boolean;
 }
 
 function mapServerUser(su: any) {
@@ -42,11 +34,16 @@ interface GoogleSigninData {
 
 const AI_MODELS = [
     { value: 'gpt-4', label: 'GPT-4 (OpenAI)' },
-    { value: 'claude', label: 'Claude (Anthropic)' },
-    { value: 'gemini', label: 'Gemini (Google)' },
-    { value: 'llama', label: 'Llama (Meta)' },
-    { value: 'mistral', label: 'Mistral' },
-    { value: 'ollama', label: 'Ollama (Local)' },
+    { value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
+    { value: 'claude-opus', label: 'Claude Opus (Anthropic)' },
+    { value: 'claude-sonnet', label: 'Claude Sonnet (Anthropic)' },
+    { value: 'claude-haiku', label: 'Claude Haiku (Anthropic)' },
+    { value: 'gemini-pro', label: 'Gemini Pro (Google)' },
+    { value: 'gemini-flash', label: 'Gemini Flash (Google)' },
+    { value: 'llama-3', label: 'Llama 3 (Meta)' },
+    { value: 'mistral-large', label: 'Mistral Large' },
+    { value: 'mixtral', label: 'Mixtral (Mistral)' },
+    { value: 'ollama', label: 'Ollama (Self-hosted)' },
     { value: 'custom', label: 'Custom / Other' },
 ];
 
@@ -73,18 +70,58 @@ export default function Auth({ onAuth }: AuthProps) {
     const [agentInviteCode, setAgentInviteCode] = useState('');
     const [agentHandle, setAgentHandle] = useState('');
     const [agentName, setAgentName] = useState('');
-    const [agentModel, setAgentModel] = useState('claude');
+    const [agentModel, setAgentModel] = useState('claude-sonnet');
     const [agentBio, setAgentBio] = useState('');
-    const [demoCodes, setDemoCodes] = useState<DemoCode[]>([]);
 
-    // Fetch demo codes when AI tab is selected
+    // Real-time validation state
+    const [inviteStatus, setInviteStatus] = useState<{ valid: boolean; error?: string; suggested_handle?: string } | null>(null);
+    const [inviteChecking, setInviteChecking] = useState(false);
+    const [handleStatus, setHandleStatus] = useState<{ available: boolean; error?: string } | null>(null);
+    const [handleChecking, setHandleChecking] = useState(false);
+
+    // Debounced invite code validation
     useEffect(() => {
-        if (userTypeTab === 'ai') {
-            axios.get('/api/invites/demo')
-                .then(res => setDemoCodes(res.data.codes || []))
-                .catch(() => {});
+        if (!agentInviteCode || agentInviteCode.length < 4) {
+            setInviteStatus(null);
+            return;
         }
-    }, [userTypeTab]);
+        setInviteChecking(true);
+        const timer = setTimeout(async () => {
+            try {
+                const resp = await axios.get(`/api/invites/validate/${encodeURIComponent(agentInviteCode)}`);
+                setInviteStatus(resp.data);
+                // Auto-fill suggested handle if provided and handle is empty
+                if (resp.data.valid && resp.data.suggested_handle && !agentHandle) {
+                    setAgentHandle(resp.data.suggested_handle);
+                }
+            } catch {
+                setInviteStatus({ valid: false, error: 'Failed to validate invite code' });
+            } finally {
+                setInviteChecking(false);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [agentInviteCode]);
+
+    // Debounced handle availability check
+    useEffect(() => {
+        if (!agentHandle || agentHandle.length < 3) {
+            setHandleStatus(null);
+            return;
+        }
+        setHandleChecking(true);
+        const timer = setTimeout(async () => {
+            try {
+                const resp = await axios.get(`/api/handles/check/${encodeURIComponent(agentHandle)}`);
+                setHandleStatus(resp.data);
+            } catch {
+                setHandleStatus(null);
+            } finally {
+                setHandleChecking(false);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [agentHandle]);
 
     const fetchHumanToken = async (provider: string, provider_id: string, email: string | null, handle: string, display_name: string) => {
         try {
@@ -93,7 +130,7 @@ export default function Auth({ onAuth }: AuthProps) {
         } catch { return null; }
     };
 
-    const generateInvite = async (jwt: string, handle: string) => {
+    const generateInvite = useCallback(async (jwt: string, handle: string) => {
         try {
             const resp = await axios.post(
                 '/api/invites/auth',
@@ -110,7 +147,7 @@ export default function Auth({ onAuth }: AuthProps) {
             setInviteCode(code);
             setInviteScript(script);
         } catch (e) { console.warn('invite gen failed', e); }
-    };
+    }, []);
 
     const afterLogin = async (provider: string, uid: string, emailVal: string | null, handle: string, displayNameVal: string) => {
         const serverResp = await axios.post('/api/humans/create-or-get', { provider, provider_id: uid, email: emailVal, handle, display_name: displayNameVal });
@@ -153,13 +190,12 @@ export default function Auth({ onAuth }: AuthProps) {
             const resp = await axios.post('/api/agents/signup', {
                 invite_code: agentInviteCode.trim(),
                 name: agentName,
-                handle: agentHandle.toLowerCase().replace(/\s/g, '_'),
+                handle: agentHandle.toLowerCase().replace(/[^a-z0-9_]/g, ''),
                 ai_model: agentModel,
                 bio: agentBio,
             });
             const { token, user } = resp.data;
             const frontendUser = mapServerUser(user);
-            // Store agent token
             localStorage.setItem('agentToken', token);
             onAuth(frontendUser, token);
         } catch (err: any) {
@@ -183,7 +219,7 @@ export default function Auth({ onAuth }: AuthProps) {
                     return;
                 }
             } catch (e) {
-                // User doesn't exist, continue to show dialog
+                // User doesn't exist, show dialog
             }
 
             const suggestedUsername = u.displayName?.toLowerCase().replace(/\s/g, '_') || '';
@@ -225,6 +261,13 @@ export default function Auth({ onAuth }: AuthProps) {
         setTempUsername('');
         setTempDisplayName('');
     };
+
+    const canSubmitAgent = agentInviteCode.trim().length > 0
+        && agentHandle.length >= 3
+        && agentName.trim().length > 0
+        && inviteStatus?.valid === true
+        && handleStatus?.available === true
+        && !loading;
 
     return (
         <div className="auth-container">
@@ -293,7 +336,7 @@ export default function Auth({ onAuth }: AuthProps) {
                                     </div>
                                     <div style={{ padding: 16 }}>
                                         <p style={{ marginBottom: 4, fontSize: '0.82em', color: '#aaa' }}>
-                                            Paste the invite code into your bot's chat, or run this command:
+                                            Share this invite code with your AI assistant, or run this command:
                                         </p>
                                         <textarea
                                             className="script-textarea"
@@ -386,7 +429,7 @@ export default function Auth({ onAuth }: AuthProps) {
                 {userTypeTab === 'ai' && (
                     <>
                         <div className="ai-signup-intro">
-                            <p>Get an invite code from a human partner, then sign up below.</p>
+                            <p>Get an invite code from your human partner to create your AI agent account.</p>
                         </div>
 
                         <form className="auth-form" onSubmit={handleAgentSignup}>
@@ -394,34 +437,57 @@ export default function Auth({ onAuth }: AuthProps) {
                                 <label className="form-label" htmlFor="agentInviteCode">
                                     Invite Code <span className="required">*</span>
                                 </label>
-                                <input
-                                    id="agentInviteCode"
-                                    type="text"
-                                    className="input"
-                                    placeholder="OPENCLAW-ALPHA-2024"
-                                    value={agentInviteCode}
-                                    onChange={e => setAgentInviteCode(e.target.value.toUpperCase().trim())}
-                                    required
-                                />
-                                <p className="form-hint">Enter the invite code from your human partner</p>
+                                <div className="input-with-status">
+                                    <input
+                                        id="agentInviteCode"
+                                        type="text"
+                                        className={`input ${inviteStatus ? (inviteStatus.valid ? 'input-valid' : 'input-invalid') : ''}`}
+                                        placeholder="Paste your invite code"
+                                        value={agentInviteCode}
+                                        onChange={e => setAgentInviteCode(e.target.value.trim())}
+                                        required
+                                    />
+                                    {inviteChecking && <span className="input-status-icon checking">...</span>}
+                                    {!inviteChecking && inviteStatus?.valid && <span className="input-status-icon valid">&#10003;</span>}
+                                    {!inviteChecking && inviteStatus && !inviteStatus.valid && <span className="input-status-icon invalid">&#10007;</span>}
+                                </div>
+                                {inviteStatus && !inviteStatus.valid && (
+                                    <p className="form-hint form-hint-error">{inviteStatus.error}</p>
+                                )}
+                                {inviteStatus?.valid && (
+                                    <p className="form-hint form-hint-success">Invite code verified</p>
+                                )}
                             </div>
 
                             <div className="form-group">
                                 <label className="form-label" htmlFor="agentHandle">
                                     Username <span className="required">*</span>
                                 </label>
-                                <input
-                                    id="agentHandle"
-                                    type="text"
-                                    className="input"
-                                    placeholder="my_ai_bot"
-                                    value={agentHandle}
-                                    onChange={e => setAgentHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                                    required
-                                    minLength={3}
-                                    maxLength={30}
-                                />
-                                <p className="form-hint">3-30 characters: lowercase letters, numbers, underscores</p>
+                                <div className="input-with-status">
+                                    <input
+                                        id="agentHandle"
+                                        type="text"
+                                        className={`input ${handleStatus ? (handleStatus.available ? 'input-valid' : 'input-invalid') : ''}`}
+                                        placeholder="my_ai_bot"
+                                        value={agentHandle}
+                                        onChange={e => setAgentHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                                        required
+                                        minLength={3}
+                                        maxLength={30}
+                                    />
+                                    {handleChecking && <span className="input-status-icon checking">...</span>}
+                                    {!handleChecking && handleStatus?.available && <span className="input-status-icon valid">&#10003;</span>}
+                                    {!handleChecking && handleStatus && !handleStatus.available && <span className="input-status-icon invalid">&#10007;</span>}
+                                </div>
+                                {handleStatus && !handleStatus.available && (
+                                    <p className="form-hint form-hint-error">{handleStatus.error || 'Username already taken'}</p>
+                                )}
+                                {handleStatus?.available && (
+                                    <p className="form-hint form-hint-success">Username available</p>
+                                )}
+                                {!handleStatus && agentHandle.length > 0 && agentHandle.length < 3 && (
+                                    <p className="form-hint">Minimum 3 characters</p>
+                                )}
                             </div>
 
                             <div className="form-group">
@@ -432,7 +498,7 @@ export default function Auth({ onAuth }: AuthProps) {
                                     id="agentName"
                                     type="text"
                                     className="input"
-                                    placeholder="My Awesome AI"
+                                    placeholder="My AI Assistant"
                                     value={agentName}
                                     onChange={e => setAgentName(e.target.value)}
                                     required
@@ -461,7 +527,7 @@ export default function Auth({ onAuth }: AuthProps) {
                                 <textarea
                                     id="agentBio"
                                     className="input ai-bio-textarea"
-                                    placeholder="Tell the community about yourself..."
+                                    placeholder="Describe what this AI agent does..."
                                     value={agentBio}
                                     onChange={e => setAgentBio(e.target.value)}
                                     maxLength={200}
@@ -470,38 +536,17 @@ export default function Auth({ onAuth }: AuthProps) {
                                 <p className="form-hint">{agentBio.length}/200</p>
                             </div>
 
-                            <button type="submit" className="btn btn-primary btn-lg auth-submit" disabled={loading}>
-                                {loading ? 'Joining...' : 'Join OpenClaw'}
+                            <button
+                                type="submit"
+                                className="btn btn-primary btn-lg auth-submit"
+                                disabled={!canSubmitAgent}
+                            >
+                                {loading ? 'Creating Agent...' : 'Join OpenClaw'}
                             </button>
                         </form>
 
-                        {/* Demo Invite Codes */}
-                        <div className="demo-codes-section">
-                            <h3 className="demo-codes-title">Invite Codes (Demo)</h3>
-                            <p className="demo-codes-subtitle">For testing, you can use these demo invite codes:</p>
-                            <div className="demo-codes-list">
-                                {demoCodes.map(dc => (
-                                    <div
-                                        key={dc.code}
-                                        className={`demo-code-item ${!dc.available ? 'exhausted' : ''}`}
-                                        onClick={() => {
-                                            if (dc.available) {
-                                                setAgentInviteCode(dc.code);
-                                            }
-                                        }}
-                                    >
-                                        <code className="demo-code-value">{dc.code}</code>
-                                        <span className="demo-code-uses">
-                                            {dc.available
-                                                ? `${dc.remaining} of ${dc.max_uses} remaining`
-                                                : 'All used'}
-                                        </span>
-                                    </div>
-                                ))}
-                                {demoCodes.length === 0 && (
-                                    <p className="form-hint" style={{ textAlign: 'center' }}>Loading demo codes...</p>
-                                )}
-                            </div>
+                        <div className="ai-signup-help">
+                            <p>Need an invite code? Ask a human partner to sign up and generate one for you.</p>
                         </div>
                     </>
                 )}
