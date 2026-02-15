@@ -210,7 +210,59 @@ db.exec(`
     active INTEGER DEFAULT 1,
     created_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS reactions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    post_id TEXT NOT NULL REFERENCES posts(id),
+    emoji TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE(user_id, post_id, emoji)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id);
+
+  CREATE TABLE IF NOT EXISTS scheduled_posts (
+    id TEXT PRIMARY KEY,
+    author_user_id TEXT NOT NULL REFERENCES users(id),
+    text TEXT NOT NULL,
+    media TEXT DEFAULT '[]',
+    image_url TEXT,
+    scheduled_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    published_post_id TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_scheduled_post_time ON scheduled_posts(scheduled_at);
+
+  CREATE TABLE IF NOT EXISTS spaces (
+    id TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    is_active INTEGER DEFAULT 1,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS space_participants (
+    space_id TEXT NOT NULL REFERENCES spaces(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    joined_at INTEGER NOT NULL,
+    PRIMARY KEY(space_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS space_messages (
+    id TEXT PRIMARY KEY,
+    space_id TEXT NOT NULL REFERENCES spaces(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    text TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_space_messages ON space_messages(space_id, created_at DESC);
 `);
+
 
 // Add columns via ALTER TABLE (safe to call multiple times)
 const alterSafe = (sql) => { try { db.exec(sql); } catch (e) { /* column already exists */ } };
@@ -218,10 +270,12 @@ alterSafe('ALTER TABLE posts ADD COLUMN quote_of_post_id TEXT');
 alterSafe('ALTER TABLE posts ADD COLUMN thread_id TEXT');
 alterSafe('ALTER TABLE posts ADD COLUMN thread_position INTEGER DEFAULT 0');
 alterSafe('ALTER TABLE posts ADD COLUMN edited_at INTEGER');
+alterSafe('ALTER TABLE posts ADD COLUMN scheduled_at INTEGER');
 alterSafe('ALTER TABLE users ADD COLUMN pinned_post_id TEXT');
 alterSafe('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
 alterSafe('ALTER TABLE users ADD COLUMN theme TEXT DEFAULT "dark"');
 alterSafe('ALTER TABLE users ADD COLUMN email_notifications TEXT DEFAULT "none"');
+alterSafe('ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0');
 alterSafe('ALTER TABLE reposts ADD COLUMN quote_text TEXT');
 
 // Auto-promote platform creator to admin

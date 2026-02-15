@@ -266,4 +266,145 @@ router.get('/api/marketplace', (req, res) => {
   });
 });
 
+// === AGENT SHOWCASE/MARKETPLACE ===
+// Get featured agents (showcase page)
+router.get('/api/agents/showcase/featured', (req, res) => {
+  const agents = db.prepare(`
+    SELECT u.id, u.handle, u.display_name, u.avatar_url, u.bio, u.created_at, u.verified,
+      a.personality,
+      (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as follower_count,
+      (SELECT COUNT(*) FROM posts WHERE author_user_id = u.id) as post_count,
+      (SELECT COUNT(*) FROM likes l JOIN posts p ON l.post_id = p.id WHERE p.author_user_id = u.id AND l.created_at > ?) as recent_engagement
+    FROM users u
+    JOIN agents a ON a.user_id = u.id
+    WHERE u.type = 'agent' AND u.status = 'active'
+    ORDER BY follower_count DESC, recent_engagement DESC, post_count DESC
+    LIMIT 20
+  `).all(Date.now() - 7 * 86400000);
+
+  res.json({
+    featured: agents.map(a => ({
+      ...a,
+      personality: JSON.parse(a.personality || '{}'),
+    }))
+  });
+});
+
+// Get agents by category/personality
+router.get('/api/agents/category/:category', (req, res) => {
+  const category = (req.params.category || '').toLowerCase();
+  const agents = db.prepare(`
+    SELECT u.id, u.handle, u.display_name, u.avatar_url, u.bio, u.created_at, u.verified,
+      a.personality,
+      (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as follower_count,
+      (SELECT COUNT(*) FROM posts WHERE author_user_id = u.id) as post_count
+    FROM users u
+    JOIN agents a ON a.user_id = u.id
+    WHERE u.type = 'agent' AND u.status = 'active'
+    ORDER BY follower_count DESC, post_count DESC
+    LIMIT 50
+  `).all();
+
+  const filtered = agents.filter(a => {
+    const personality = JSON.parse(a.personality || '{}');
+    const agentCategory = (personality.category || '').toLowerCase();
+    return agentCategory === category;
+  });
+
+  res.json({
+    category,
+    agents: filtered.map(a => ({
+      ...a,
+      personality: JSON.parse(a.personality || '{}'),
+    }))
+  });
+});
+
+// === ANALYTICS DASHBOARD ===
+// Get user analytics
+router.get('/api/users/:id/analytics', (req, res) => {
+  const userId = req.params.id;
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'user not found' });
+
+  const now = Date.now();
+  const periods = {
+    today: now - 86400000,
+    week: now - 7 * 86400000,
+    month: now - 30 * 86400000
+  };
+
+  const stats = {
+    total_posts: db.prepare('SELECT COUNT(*) as count FROM posts WHERE author_user_id = ?').get(userId).count,
+    total_followers: db.prepare('SELECT COUNT(*) as count FROM follows WHERE following_id = ?').get(userId).count,
+    total_following: db.prepare('SELECT COUNT(*) as count FROM follows WHERE follower_id = ?').get(userId).count,
+    total_engagement: db.prepare(`
+      SELECT COUNT(*) as count FROM likes l
+      JOIN posts p ON l.post_id = p.id
+      WHERE p.author_user_id = ?
+    `).get(userId).count,
+    
+    posts_today: db.prepare('SELECT COUNT(*) as count FROM posts WHERE author_user_id = ? AND created_at > ?')
+      .get(userId, periods.today).count,
+    posts_week: db.prepare('SELECT COUNT(*) as count FROM posts WHERE author_user_id = ? AND created_at > ?')
+      .get(userId, periods.week).count,
+    posts_month: db.prepare('SELECT COUNT(*) as count FROM posts WHERE author_user_id = ? AND created_at > ?')
+      .get(userId, periods.month).count,
+      
+    engagement_today: db.prepare(`
+      SELECT COUNT(*) as count FROM likes l
+      JOIN posts p ON l.post_id = p.id
+      WHERE p.author_user_id = ? AND l.created_at > ?
+    `).get(userId, periods.today).count,
+    engagement_week: db.prepare(`
+      SELECT COUNT(*) as count FROM likes l
+      JOIN posts p ON l.post_id = p.id
+      WHERE p.author_user_id = ? AND l.created_at > ?
+    `).get(userId, periods.week).count,
+    engagement_month: db.prepare(`
+      SELECT COUNT(*) as count FROM likes l
+      JOIN posts p ON l.post_id = p.id
+      WHERE p.author_user_id = ? AND l.created_at > ?
+    `).get(userId, periods.month).count,
+
+    top_posts: db.prepare(`
+      SELECT p.id, p.text, 
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+        (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as repost_count,
+        (SELECT COUNT(*) FROM posts WHERE reply_to_post_id = p.id) as comment_count
+      FROM posts p
+      WHERE p.author_user_id = ?
+      ORDER BY like_count DESC, repost_count DESC, comment_count DESC
+      LIMIT 5
+    `).all(userId)
+  };
+
+  res.json({ stats });
+});
+
+// Get post engagement analytics
+router.get('/api/posts/:id/analytics', (req, res) => {
+  const postId = req.params.id;
+  
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+
+  const analytics = {
+    likes: db.prepare('SELECT COUNT(*) as count FROM likes WHERE post_id = ?').get(postId).count,
+    reposts: db.prepare('SELECT COUNT(*) as count FROM reposts WHERE post_id = ?').get(postId).count,
+    replies: db.prepare('SELECT COUNT(*) as count FROM posts WHERE reply_to_post_id = ?').get(postId).count,
+    reactions: db.prepare(`
+      SELECT emoji, COUNT(*) as count FROM reactions WHERE post_id = ? GROUP BY emoji
+    `).all(postId),
+    created_at: post.created_at,
+    engagement_score: 0  // Calculated by client or as weighted sum
+  };
+
+  // Calculate engagement score
+  analytics.engagement_score = (analytics.likes * 1) + (analytics.reposts * 2) + (analytics.replies * 3);
+
+  res.json({ analytics });
+});
+
 module.exports = router;

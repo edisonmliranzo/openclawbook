@@ -548,4 +548,179 @@ router.post('/api/posts/suggest', authenticateAny, async (req, res) => {
   }
 });
 
+// === REACTIONS ===
+// Add reaction to post
+router.post('/api/posts/:id/reactions/:emoji', authenticateAny, (req, res) => {
+  const { id: postId, emoji } = req.params;
+  const userId = req.user.id;
+  
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+  
+  // Validate emoji
+  if (!emoji || emoji.length > 4) return res.status(400).json({ error: 'invalid emoji' });
+  
+  try {
+    db.prepare('INSERT INTO reactions (id, user_id, post_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(uuidv4(), userId, postId, emoji, Date.now());
+    res.json({ success: true });
+  } catch (err) {
+    // Already reacted, so remove instead (toggle)
+    db.prepare('DELETE FROM reactions WHERE user_id = ? AND post_id = ? AND emoji = ?')
+      .run(userId, postId, emoji);
+    res.json({ success: true, removed: true });
+  }
+});
+
+// Get reactions for post
+router.get('/api/posts/:id/reactions', (req, res) => {
+  const reactions = db.prepare(`
+    SELECT emoji, COUNT(*) as count
+    FROM reactions
+    WHERE post_id = ?
+    GROUP BY emoji
+    ORDER BY count DESC
+  `).all(req.params.id);
+  
+  res.json({ reactions });
+});
+
+// === PINNED POSTS ===
+// Pin post to profile
+router.post('/api/posts/:id/pin', authenticateAny, (req, res) => {
+  const userId = req.user.id;
+  const postId = req.params.id;
+  
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+  if (post.author_user_id !== userId) return res.status(403).json({ error: 'can only pin own posts' });
+  
+  db.prepare('UPDATE users SET pinned_post_id = ? WHERE id = ?').run(postId, userId);
+  res.json({ success: true, pinned_post_id: postId });
+});
+
+// Unpin post
+router.post('/api/posts/:id/unpin', authenticateAny, (req, res) => {
+  const userId = req.user.id;
+  
+  db.prepare('UPDATE users SET pinned_post_id = NULL WHERE id = ?').run(userId);
+  res.json({ success: true });
+});
+
+// === SCHEDULED POSTS ===
+// Schedule post
+router.post('/api/posts/schedule', authenticateAny, (req, res) => {
+  const { text, image_url, media = [], scheduled_at } = req.body || {};
+  const userId = req.user.id;
+  
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (!scheduled_at || scheduled_at <= Date.now()) return res.status(400).json({ error: 'scheduled_at must be in future' });
+  if (text.length > 500) return res.status(400).json({ error: 'text exceeds 500 character limit' });
+  
+  const id = uuidv4();
+  db.prepare(`INSERT INTO scheduled_posts (id, author_user_id, text, media, image_url, scheduled_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, userId, text, JSON.stringify(media), image_url || null, scheduled_at, Date.now());
+  
+  res.json({ id, scheduled_at });
+});
+
+// Get user's scheduled posts
+router.get('/api/users/:id/scheduled', authenticateAny, (req, res) => {
+  if (req.user.id !== req.params.id) return res.status(403).json({ error: 'unauthorized' });
+  
+  const posts = db.prepare(`
+    SELECT * FROM scheduled_posts
+    WHERE author_user_id = ?
+    ORDER BY scheduled_at ASC
+  `).all(req.params.id);
+  
+  res.json({ posts });
+});
+
+// Delete scheduled post
+router.delete('/api/scheduled-posts/:id', authenticateAny, (req, res) => {
+  const post = db.prepare('SELECT * FROM scheduled_posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+  if (post.author_user_id !== req.user.id) return res.status(403).json({ error: 'unauthorized' });
+  
+  db.prepare('DELETE FROM scheduled_posts WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// === TRENDING TOPICS ===
+// Get trending hashtags
+router.get('/api/trending', (req, res) => {
+  const period = req.query.period || '24h';
+  const since = period === '24h' ? Date.now() - 86400000 : period === '7d' ? Date.now() - 7 * 86400000 : Date.now() - 30 * 86400000;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  
+  const trending = db.prepare(`
+    SELECT h.tag, h.id,
+      COUNT(DISTINCT p.id) as post_count,
+      COUNT(DISTINCT l.id) as engagement_score
+    FROM post_hashtags ph
+    JOIN hashtags h ON ph.hashtag_id = h.id
+    JOIN posts p ON ph.post_id = p.id
+    LEFT JOIN likes l ON p.id = l.post_id AND l.created_at > ?
+    WHERE p.created_at > ?
+    GROUP BY h.id
+    ORDER BY engagement_score DESC, post_count DESC
+    LIMIT ?
+  `).all(since, since, limit);
+  
+  res.json({ trending, period });
+});
+
+// === THREADS ===
+// Create thread
+router.post('/api/threads', authenticateAny, (req, res) => {
+  const { posts: threadPosts } = req.body || {};
+  const userId = req.user.id;
+  
+  if (!Array.isArray(threadPosts) || threadPosts.length === 0) {
+    return res.status(400).json({ error: 'at least one post required' });
+  }
+  
+  const threadId = uuidv4();
+  const createdPosts = [];
+  
+  try {
+    const insertPost = db.transaction((text, position) => {
+      const postId = uuidv4();
+      db.prepare(`INSERT INTO posts (id, author_user_id, text, thread_id, thread_position, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(postId, userId, text, threadId, position, Date.now());
+      return postId;
+    });
+    
+    for (let i = 0; i < threadPosts.length; i++) {
+      const postId = insertPost(threadPosts[i], i);
+      createdPosts.push(postId);
+    }
+    
+    res.json({ thread_id: threadId, posts: createdPosts });
+  } catch (err) {
+    return res.status(400).json({ error: 'failed to create thread' });
+  }
+});
+
+// Get thread posts
+router.get('/api/threads/:threadId', optionalAuth, (req, res) => {
+  const posts = db.prepare(`
+    SELECT p.*,
+      u.handle as author_handle, u.display_name as author_display_name, u.avatar_url as author_avatar_url, u.type as author_type,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
+      (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) AS repost_count
+    FROM posts p
+    JOIN users u ON p.author_user_id = u.id
+    WHERE p.thread_id = ?
+    ORDER BY p.thread_position ASC
+  `).all(req.params.threadId);
+  
+  if (posts.length === 0) return res.status(404).json({ error: 'thread not found' });
+  
+  res.json({ posts });
+});
+
 module.exports = router;
