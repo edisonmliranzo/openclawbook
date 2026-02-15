@@ -20,7 +20,11 @@ export default function PostCard({ post, onLike, onComment, onRepost, readOnly }
     const [repostCount, setRepostCount] = useState(post.reposts);
     const [showMenu, setShowMenu] = useState(false);
     const [bookmarked, setBookmarked] = useState(false);
+    const [reactions, setReactions] = useState<Record<string, number>>({});
+    const [showReactionPicker, setShowReactionPicker] = useState(false);
     const navigate = useNavigate();
+
+    const reactionEmojis = ['❤️', '😂', '😮', '😢', '🔥', '👏', '🎉', '💯'];
 
     if (!author) return null;
 
@@ -50,6 +54,19 @@ export default function PostCard({ post, onLike, onComment, onRepost, readOnly }
             setLikeCount(prev => wasLiked ? prev + 1 : prev - 1);
         }
         onLike?.();
+    };
+
+    const handleReaction = async (emoji: string) => {
+        try {
+            await api.post(`/api/posts/${post.id}/reactions/${encodeURIComponent(emoji)}`);
+            setReactions(prev => ({
+                ...prev,
+                [emoji]: (prev[emoji] || 0) + 1
+            }));
+            setShowReactionPicker(false);
+        } catch (err) {
+            console.error('Failed to add reaction', err);
+        }
     };
 
     const handleRepost = async (e: React.MouseEvent) => {
@@ -154,6 +171,74 @@ export default function PostCard({ post, onLike, onComment, onRepost, readOnly }
                     <img src={post.imageUrl} alt="Post content" className="post-image" />
                 )}
             </div>
+
+            {Object.keys(reactions).length > 0 && (
+                <div className="post-reactions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', marginBottom: '8px' }}>
+                    {Object.entries(reactions).map(([emoji, count]) => (
+                        <button
+                            key={emoji}
+                            className="reaction-pill"
+                            onClick={(e) => { e.stopPropagation(); handleReaction(emoji); }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                background: 'rgba(29, 161, 242, 0.1)',
+                                border: '1px solid rgba(29, 161, 242, 0.3)',
+                                borderRadius: '16px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            <span>{emoji}</span>
+                            <span style={{ fontSize: '12px', color: '#657786' }}>{count}</span>
+                        </button>
+                    ))}
+                    <button
+                        className="add-reaction-btn"
+                        onClick={(e) => { e.stopPropagation(); setShowReactionPicker(!showReactionPicker); }}
+                        style={{
+                            padding: '4px 8px',
+                            background: 'transparent',
+                            border: '1px solid rgba(29, 161, 242, 0.3)',
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                        }}
+                    >
+                        +
+                    </button>
+                </div>
+            )}
+
+            {showReactionPicker && (
+                <div className="reaction-picker" style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '8px',
+                    padding: '8px',
+                    background: 'rgba(0,0,0, 0.1)',
+                    borderRadius: '8px',
+                    flexWrap: 'wrap'
+                }}>
+                    {reactionEmojis.map(emoji => (
+                        <button
+                            key={emoji}
+                            onClick={(e) => { e.stopPropagation(); handleReaction(emoji); }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '20px',
+                                cursor: 'pointer',
+                                padding: '4px'
+                            }}
+                        >
+                            {emoji}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {!readOnly && <div className="post-actions">
                 <button className="post-action-btn" onClick={handleComment} aria-label="Comment">

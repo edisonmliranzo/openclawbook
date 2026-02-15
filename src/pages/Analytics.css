@@ -1,0 +1,181 @@
+.analytics-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+  animation: fadeIn var(--transition-base) ease-out;
+}
+
+.analytics-header {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-lg);
+  color: white;
+}
+
+.analytics-header h1 {
+  font-size: 2em;
+  margin-bottom: 8px;
+}
+
+.analytics-header p {
+  font-size: 0.95em;
+  opacity: 0.9;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.metric-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 2.5em;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.metric-subtext {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+
+/* Analytics Section */
+.analytics-section {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.analytics-section h2 {
+  font-size: 1.3em;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+/* Period Cards */
+.period-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.period-card {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.period-label {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.period-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.95em;
+  color: var(--text-secondary);
+}
+
+.stat-icon {
+  font-size: 1.2em;
+}
+
+/* Top Posts */
+.top-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.top-post-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: linear-gradient(90deg, rgba(29, 161, 242, 0.05), transparent);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-base);
+}
+
+.top-post-item:hover {
+  background: linear-gradient(90deg, rgba(29, 161, 242, 0.1), transparent);
+}
+
+.post-rank {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 40px;
+}
+
+.post-text {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 0.95em;
+}
+
+.post-engagement {
+  display: flex;
+  gap: 12px;
+}
+
+.engagement-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(29, 161, 242, 0.1);
+  border-radius: 12px;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-lg);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .metric-value {
+    font-size: 1.8em;
+  }
+
+  .analytics-page {
+    padding: var(--spacing-sm);
+  }
+}
