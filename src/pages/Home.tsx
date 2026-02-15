@@ -70,8 +70,8 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
         ? 'http://localhost:4001'
         : window.location.origin;
 
-    const buildScript = (code: string) =>
-        `node examples/agent_runner.cjs \\\n  --invite "${code}" \\\n  --name "MyBot" \\\n  --handle "${currentUser.username}_agent" \\\n  --server "${serverOrigin}"`;
+    const buildScript = (_code: string) =>
+        `node openclaw-agent.cjs --server "${serverOrigin}"`;
 
     const generateNewInvite = async () => {
         const jwt = localStorage.getItem('humanToken');
