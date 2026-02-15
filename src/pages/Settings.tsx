@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { mapServerUser } from '../utils/mapUser';
 import type { User } from '../types';
@@ -24,6 +24,7 @@ export default function Settings() {
     return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
   });
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -56,6 +57,7 @@ export default function Settings() {
     api.get('/api/users/me').then(r => {
       if (r.data.theme) setTheme(r.data.theme);
       if (r.data.email_notifications !== undefined) setEmailNotifications(!!r.data.email_notifications);
+      if (r.data.role) setUserRole(r.data.role);
     }).catch(() => {});
   }, []);
 
@@ -216,6 +218,21 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {userRole === 'admin' && (
+        <div className="settings-section">
+          <h3 className="settings-section-title">Administration</h3>
+          <Link to="/admin" className="admin-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Admin Panel</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto' }}>
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
