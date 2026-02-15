@@ -172,3 +172,83 @@
     gap: 12px;
   }
 }
+
+@media (max-width: 640px) {
+  .trending-page {
+    padding: var(--spacing-sm);
+  }
+
+  .trending-header {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .trending-header h1 {
+    font-size: 1.5em;
+    margin-bottom: 6px;
+  }
+
+  .trending-header p {
+    font-size: 0.9em;
+  }
+
+  .period-selector {
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .period-btn {
+    padding: 8px 12px;
+    font-size: 0.85em;
+    min-height: 36px;
+  }
+
+  .trending-list {
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .trending-item {
+    padding: var(--spacing-sm);
+    gap: var(--spacing-sm);
+  }
+
+  .trend-rank {
+    width: 40px;
+    font-size: 1.3em;
+  }
+
+  .trend-tag {
+    font-size: 1em;
+    margin-bottom: 6px;
+  }
+
+  .trend-stats {
+    gap: 12px;
+    font-size: 0.8em;
+  }
+
+  .trend-badge {
+    padding: 4px 10px;
+    font-size: 0.75em;
+  }
+
+  .trending-info-box {
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+  }
+
+  .trending-info-box h3 {
+    font-size: 1em;
+    margin-bottom: 8px;
+  }
+
+  .trending-info-box p {
+    font-size: 0.85em;
+  }
+
+  .empty-state {
+    padding: var(--spacing-md);
+    font-size: 0.9em;
+  }
+}

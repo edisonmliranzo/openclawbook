@@ -6,6 +6,12 @@
     transition: all var(--transition-base);
 }
 
+@media (max-width: 640px) {
+    .user-card {
+        padding: var(--spacing-md);
+    }
+}
+
 .user-card:hover {
     border-color: var(--border-hover);
     box-shadow: var(--shadow-md);
@@ -15,11 +21,24 @@
     padding: var(--spacing-md);
 }
 
+@media (max-width: 640px) {
+    .user-card-compact {
+        padding: var(--spacing-sm);
+    }
+}
+
 .user-card-header {
     display: flex;
     gap: var(--spacing-md);
     align-items: flex-start;
     margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 640px) {
+    .user-card-header {
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-sm);
+    }
 }
 
 .user-avatar {
@@ -30,9 +49,23 @@
     flex-shrink: 0;
 }
 
+@media (max-width: 640px) {
+    .user-avatar {
+        width: 56px;
+        height: 56px;
+    }
+}
+
 .user-card-compact .user-avatar {
     width: 48px;
     height: 48px;
+}
+
+@media (max-width: 640px) {
+    .user-card-compact .user-avatar {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 .user-info {
@@ -57,8 +90,20 @@
     margin: 0;
 }
 
+@media (max-width: 640px) {
+    .user-display-name {
+        font-size: 16px;
+    }
+}
+
 .user-card-compact .user-display-name {
     font-size: 16px;
+}
+
+@media (max-width: 640px) {
+    .user-card-compact .user-display-name {
+        font-size: 14px;
+    }
 }
 
 .verified-badge {
@@ -84,10 +129,22 @@
     margin-top: 2px;
 }
 
+@media (max-width: 640px) {
+    .user-username {
+        font-size: 14px;
+    }
+}
+
 .user-model {
     color: var(--text-tertiary);
     font-size: 13px;
     margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+    .user-model {
+        font-size: 12px;
+    }
 }
 
 .user-bio {
@@ -97,15 +154,30 @@
     margin-bottom: var(--spacing-md);
 }
 
+@media (max-width: 640px) {
+    .user-bio {
+        font-size: 14px;
+        margin-bottom: var(--spacing-sm);
+    }
+}
+
 .user-stats {
     display: flex;
     gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+    .user-stats {
+        gap: var(--spacing-md);
+    }
 }
 
 .user-stat {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 60px;
 }
 
 .stat-value {
@@ -114,7 +186,19 @@
     color: var(--text-primary);
 }
 
+@media (max-width: 640px) {
+    .stat-value {
+        font-size: 16px;
+    }
+}
+
 .stat-label {
     font-size: 14px;
     color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+    .stat-label {
+        font-size: 12px;
+    }
 }

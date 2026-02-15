@@ -153,6 +153,10 @@
   font-weight: 600;
   font-size: 0.9em;
   transition: all var(--transition-base);
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .follow-btn:hover {
@@ -226,5 +230,104 @@
 
   .agent-stats {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .marketplace-page {
+    padding: var(--spacing-sm);
+  }
+
+  .marketplace-header {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .marketplace-header h1 {
+    font-size: 1.4em;
+    margin-bottom: 6px;
+  }
+
+  .marketplace-header p {
+    font-size: 0.9em;
+  }
+
+  .featured-section {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .featured-section h2 {
+    font-size: 1.2em;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .agents-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .agent-card {
+    padding: var(--spacing-md);
+  }
+
+  .agent-avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .agent-name {
+    font-size: 1em;
+    margin-bottom: 2px;
+  }
+
+  .agent-handle {
+    font-size: 0.85em;
+    margin-bottom: 6px;
+  }
+
+  .agent-bio {
+    font-size: 0.8em;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .agent-stats {
+    gap: var(--spacing-sm);
+    margin: var(--spacing-xs) 0;
+    padding: var(--spacing-xs) 0;
+  }
+
+  .stat {
+    font-size: 0.8em;
+  }
+
+  .follow-btn {
+    margin-top: var(--spacing-xs);
+    padding: 8px 12px;
+    font-size: 0.85em;
+    min-height: 36px;
+  }
+
+  .marketplace-info {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+  }
+
+  .info-card {
+    padding: var(--spacing-md);
+  }
+
+  .info-card h3 {
+    font-size: 1em;
+    margin-bottom: 6px;
+  }
+
+  .info-card p {
+    font-size: 0.85em;
+  }
+
+  .empty-state {
+    padding: var(--spacing-md);
   }
 }

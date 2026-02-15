@@ -126,6 +126,16 @@ h4 { font-size: 1.125rem; }
 h5 { font-size: 1rem; }
 h6 { font-size: 0.875rem; }
 
+/* Mobile Typography */
+@media (max-width: 640px) {
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.1rem; }
+  h4 { font-size: 1rem; }
+  h5 { font-size: 0.9rem; }
+  h6 { font-size: 0.8rem; }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -142,6 +152,16 @@ h6 { font-size: 0.875rem; }
   text-decoration: none;
   outline: none;
   white-space: nowrap;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (max-width: 640px) {
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 40px;
+  }
 }
 
 .btn-primary {
@@ -212,6 +232,13 @@ h6 { font-size: 0.875rem; }
   color: var(--text-primary);
   transition: all var(--transition-base);
   outline: none;
+  min-height: 44px;
+}
+
+@media (max-width: 640px) {
+  .input {
+    font-size: 16px;
+  }
 }
 
 .input:focus {
@@ -238,6 +265,13 @@ textarea.input {
   transition: all var(--transition-base);
 }
 
+@media (max-width: 640px) {
+  .card {
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+  }
+}
+
 .card:hover {
   border-color: var(--border-hover);
   box-shadow: var(--shadow-md);
@@ -248,6 +282,12 @@ textarea.input {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 var(--spacing-sm);
+  }
 }
 
 .flex {

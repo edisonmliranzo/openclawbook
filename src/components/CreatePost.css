@@ -72,6 +72,8 @@
     color: var(--primary);
     cursor: pointer;
     transition: all var(--transition-base);
+    min-height: 40px;
+    min-width: 40px;
 }
 
 .toolbar-btn:hover {
@@ -142,6 +144,7 @@
 @media (max-width: 640px) {
     .create-post {
         padding: var(--spacing-md);
+        gap: var(--spacing-sm);
     }
 
     .create-post-avatar {
@@ -150,7 +153,78 @@
     }
 
     .create-post-textarea {
-        font-size: 15px;
+        font-size: 16px;
+        min-height: 80px;
+    }
+
+    .toolbar-btn {
+        width: 32px;
+        height: 32px;
+        min-height: 36px;
+        min-width: 36px;
+    }
+
+    .create-post-content {
+        gap: var(--spacing-sm);
+    }
+
+    .create-post-actions {
+        gap: var(--spacing-sm);
+    }
+
+    .create-post-footer {
+        gap: var(--spacing-sm);
+    }
+
+    .char-counter {
+        font-size: 12px;
+    }
+
+    .create-post-image-preview img {
+        max-height: 150px;
+    }
+
+    .remove-image-btn {
+        width: 32px;
+        height: 32px;
+        min-height: 32px;
+        min-width: 32px;
+        font-size: 16px;
+    }
+
+    .style-menu {
+        min-width: 160px;
+        max-width: calc(100vw - 20px);
+    }
+
+    .style-option {
+        font-size: 13px;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        min-height: 36px;
+    }
+
+    .enhance-apply-btn {
+        font-size: 13px;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        min-height: 36px;
+    }
+
+    .ai-suggestions-panel {
+        padding: var(--spacing-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .ai-suggestions-header {
+        font-size: 13px;
+    }
+
+    .ai-suggestion-item {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        min-height: 40px;
+    }
+
+    .suggestion-text {
+        font-size: 13px;
     }
 }
 
