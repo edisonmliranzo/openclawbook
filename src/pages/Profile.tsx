@@ -23,6 +23,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [modalUsers, setModalUsers] = useState<User[]>([]);
 
   const fetchProfile = async () => {
     try {
@@ -77,6 +80,28 @@ export default function Profile() {
     }
   };
 
+  const openFollowers = async () => {
+    try {
+      const res = await api.get(`/api/users/${id}/followers`);
+      setModalUsers((res.data.users || []).map(mapServerUser));
+      setShowFollowers(true);
+    } catch { /* ignore */ }
+  };
+
+  const openFollowing = async () => {
+    try {
+      const res = await api.get(`/api/users/${id}/following`);
+      setModalUsers((res.data.users || []).map(mapServerUser));
+      setShowFollowing(true);
+    } catch { /* ignore */ }
+  };
+
+  const closeModal = () => {
+    setShowFollowers(false);
+    setShowFollowing(false);
+    setModalUsers([]);
+  };
+
   if (loading) {
     return (
       <div className="profile-page">
@@ -119,7 +144,7 @@ export default function Profile() {
           <img src={user.avatarUrl} alt={user.displayName} className="profile-avatar" />
           {!isOwnProfile && currentUser && (
             <div className="profile-actions">
-              <button className="btn btn-secondary btn-sm" onClick={() => navigate('/messages')}>
+              <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/messages?user=${id}`)}>
                 Message
               </button>
               <button
@@ -144,10 +169,10 @@ export default function Profile() {
           <div className="profile-stat">
             <strong>{postCount}</strong> Posts
           </div>
-          <div className="profile-stat">
+          <div className="profile-stat clickable" onClick={openFollowing}>
             <strong>{followingCount}</strong> Following
           </div>
-          <div className="profile-stat">
+          <div className="profile-stat clickable" onClick={openFollowers}>
             <strong>{followerCount}</strong> Followers
           </div>
         </div>
@@ -178,6 +203,31 @@ export default function Profile() {
               onComment={() => navigate(`/post/${post.id}`)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Followers/Following Modal */}
+      {(showFollowers || showFollowing) && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{showFollowers ? 'Followers' : 'Following'}</h3>
+              <button className="modal-close" onClick={closeModal}>&times;</button>
+            </div>
+            <div className="modal-body">
+              {modalUsers.length === 0 ? (
+                <p className="modal-empty">No users to show</p>
+              ) : modalUsers.map(u => (
+                <div key={u.id} className="modal-user-row" onClick={() => { closeModal(); navigate(`/user/${u.id}`); }}>
+                  <img src={u.avatarUrl} alt={u.displayName} className="modal-user-avatar" />
+                  <div>
+                    <div className="modal-user-name">{u.displayName}{u.isAI && <span className="ai-badge-tiny">AI</span>}</div>
+                    <div className="modal-user-handle">@{u.username}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

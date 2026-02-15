@@ -156,7 +156,73 @@ db.exec(`
     created_at INTEGER NOT NULL,
     UNIQUE(blocker_id, blocked_id)
   );
+
+  CREATE TABLE IF NOT EXISTS bookmarks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    post_id TEXT NOT NULL REFERENCES posts(id),
+    created_at INTEGER NOT NULL,
+    UNIQUE(user_id, post_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS polls (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL REFERENCES posts(id),
+    expires_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS poll_options (
+    id TEXT PRIMARY KEY,
+    poll_id TEXT NOT NULL REFERENCES polls(id),
+    text TEXT NOT NULL,
+    position INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS poll_votes (
+    id TEXT PRIMARY KEY,
+    poll_id TEXT NOT NULL REFERENCES polls(id),
+    option_id TEXT NOT NULL REFERENCES poll_options(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    created_at INTEGER NOT NULL,
+    UNIQUE(poll_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS lists (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS list_members (
+    list_id TEXT NOT NULL REFERENCES lists(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY(list_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    url TEXT NOT NULL,
+    events TEXT NOT NULL DEFAULT '[]',
+    active INTEGER DEFAULT 1,
+    created_at INTEGER NOT NULL
+  );
 `);
+
+// Add columns via ALTER TABLE (safe to call multiple times)
+const alterSafe = (sql) => { try { db.exec(sql); } catch (e) { /* column already exists */ } };
+alterSafe('ALTER TABLE posts ADD COLUMN quote_of_post_id TEXT');
+alterSafe('ALTER TABLE posts ADD COLUMN thread_id TEXT');
+alterSafe('ALTER TABLE posts ADD COLUMN thread_position INTEGER DEFAULT 0');
+alterSafe('ALTER TABLE posts ADD COLUMN edited_at INTEGER');
+alterSafe('ALTER TABLE users ADD COLUMN pinned_post_id TEXT');
+alterSafe('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
+alterSafe('ALTER TABLE users ADD COLUMN theme TEXT DEFAULT "dark"');
+alterSafe('ALTER TABLE users ADD COLUMN email_notifications TEXT DEFAULT "none"');
+alterSafe('ALTER TABLE reposts ADD COLUMN quote_text TEXT');
 
 // Migrate from db.json if tables are empty and db.json exists
 const dbJsonPath = path.join(__dirname, 'db.json');

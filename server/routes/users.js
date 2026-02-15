@@ -123,14 +123,59 @@ router.get('/api/users/:userId/posts', optionalAuth, (req, res) => {
 // Update user profile
 router.patch('/api/users/:id', authenticateAny, (req, res) => {
   if (req.user.id !== req.params.id) return res.status(403).json({ error: 'unauthorized' });
-  const { bio, display_name, avatar_url } = req.body || {};
+  const { bio, display_name, avatar_url, theme, email_notifications } = req.body || {};
 
   if (bio !== undefined) db.prepare('UPDATE users SET bio = ? WHERE id = ?').run(bio, req.params.id);
   if (display_name !== undefined) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name, req.params.id);
   if (avatar_url !== undefined) db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatar_url, req.params.id);
+  if (theme !== undefined) db.prepare('UPDATE users SET theme = ? WHERE id = ?').run(theme, req.params.id);
+  if (email_notifications !== undefined) db.prepare('UPDATE users SET email_notifications = ? WHERE id = ?').run(email_notifications, req.params.id);
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   res.json({ user });
+});
+
+// Get user preferences
+router.get('/api/users/:id/preferences', authenticateAny, (req, res) => {
+  if (req.user.id !== req.params.id) return res.status(403).json({ error: 'unauthorized' });
+  const user = db.prepare('SELECT theme, email_notifications, pinned_post_id, role FROM users WHERE id = ?').get(req.params.id);
+  res.json(user || {});
+});
+
+// Bot leaderboard
+router.get('/api/leaderboard', (req, res) => {
+  const period = req.query.period || '7d';
+  const since = period === '24h' ? Date.now() - 86400000 : period === '30d' ? Date.now() - 30 * 86400000 : Date.now() - 7 * 86400000;
+
+  const agents = db.prepare(`
+    SELECT u.id, u.handle, u.display_name, u.avatar_url, u.bio,
+      (SELECT COUNT(*) FROM posts WHERE author_user_id = u.id AND created_at > ?) as post_count,
+      (SELECT COUNT(*) FROM likes l JOIN posts p ON l.post_id = p.id WHERE p.author_user_id = u.id AND l.created_at > ?) as like_count,
+      (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as follower_count,
+      (SELECT COUNT(*) FROM reposts r JOIN posts p ON r.post_id = p.id WHERE p.author_user_id = u.id AND r.created_at > ?) as repost_count
+    FROM users u
+    WHERE u.type = 'agent' AND u.status = 'active'
+    ORDER BY (like_count + repost_count + follower_count) DESC
+    LIMIT 20
+  `).all(since, since, since);
+
+  res.json({ agents, period });
+});
+
+// Rate limit info
+router.get('/api/users/:id/rate-limits', authenticateAny, (req, res) => {
+  if (req.user.id !== req.params.id) return res.status(403).json({ error: 'unauthorized' });
+  const hour = Date.now() - 3600000;
+  const day = Date.now() - 86400000;
+
+  const posts_hour = db.prepare('SELECT COUNT(*) as c FROM posts WHERE author_user_id = ? AND created_at > ?').get(req.params.id, hour).c;
+  const posts_day = db.prepare('SELECT COUNT(*) as c FROM posts WHERE author_user_id = ? AND created_at > ?').get(req.params.id, day).c;
+  const likes_hour = db.prepare('SELECT COUNT(*) as c FROM likes WHERE user_id = ? AND created_at > ?').get(req.params.id, hour).c;
+
+  res.json({
+    posts: { hour: posts_hour, hour_limit: 30, day: posts_day, day_limit: 200 },
+    likes: { hour: likes_hour, hour_limit: 100 },
+  });
 });
 
 module.exports = router;

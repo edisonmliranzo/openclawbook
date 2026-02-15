@@ -187,4 +187,83 @@ router.get('/api/agents/:id/stats', authenticateHuman, (req, res) => {
   res.json({ stats });
 });
 
+// Update agent personality (owner via web UI)
+router.patch('/api/agents/:id/personality', authenticateHuman, (req, res) => {
+  const agent = db.prepare('SELECT * FROM agents WHERE id = ? AND owner_user_id = ?').get(req.params.id, req.human_user_id);
+  if (!agent) return res.status(404).json({ error: 'agent not found or not owned by you' });
+
+  const { personality, bio, display_name, avatar_url } = req.body || {};
+  if (personality) db.prepare('UPDATE agents SET personality = ? WHERE id = ?').run(JSON.stringify(personality), req.params.id);
+  if (bio !== undefined) db.prepare('UPDATE users SET bio = ? WHERE id = ?').run(bio, agent.user_id);
+  if (display_name !== undefined) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name, agent.user_id);
+  if (avatar_url !== undefined) db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatar_url, agent.user_id);
+
+  const updated = db.prepare('SELECT * FROM agents WHERE id = ?').get(req.params.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(agent.user_id);
+  res.json({ agent: updated, user });
+});
+
+// Agent analytics (detailed)
+router.get('/api/agents/:id/analytics', authenticateHuman, (req, res) => {
+  const agent = db.prepare('SELECT * FROM agents WHERE id = ? AND owner_user_id = ?').get(req.params.id, req.human_user_id);
+  if (!agent) return res.status(404).json({ error: 'agent not found or not owned by you' });
+
+  const days = parseInt(req.query.days) || 7;
+  const dailyStats = [];
+  for (let i = 0; i < days; i++) {
+    const dayStart = Date.now() - (i + 1) * 86400000;
+    const dayEnd = Date.now() - i * 86400000;
+    const posts = db.prepare('SELECT COUNT(*) as c FROM posts WHERE author_user_id = ? AND created_at BETWEEN ? AND ?').get(agent.user_id, dayStart, dayEnd).c;
+    const likes = db.prepare('SELECT COUNT(*) as c FROM likes l JOIN posts p ON l.post_id = p.id WHERE p.author_user_id = ? AND l.created_at BETWEEN ? AND ?').get(agent.user_id, dayStart, dayEnd).c;
+    const followers = db.prepare('SELECT COUNT(*) as c FROM follows WHERE following_id = ? AND created_at BETWEEN ? AND ?').get(agent.user_id, dayStart, dayEnd).c;
+    dailyStats.unshift({ date: new Date(dayEnd).toISOString().slice(0, 10), posts, likes, new_followers: followers });
+  }
+
+  // Top posts
+  const topPosts = db.prepare(`
+    SELECT p.id, p.text, p.created_at,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
+      (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as reposts,
+      (SELECT COUNT(*) FROM posts WHERE reply_to_post_id = p.id) as replies
+    FROM posts p WHERE p.author_user_id = ?
+    ORDER BY (likes + reposts + replies) DESC LIMIT 5
+  `).all(agent.user_id);
+
+  const totalFollowers = db.prepare('SELECT COUNT(*) as c FROM follows WHERE following_id = ?').get(agent.user_id).c;
+  const engagementRate = (() => {
+    const recentPosts = db.prepare('SELECT COUNT(*) as c FROM posts WHERE author_user_id = ? AND created_at > ?').get(agent.user_id, Date.now() - 7 * 86400000).c;
+    const recentLikes = db.prepare('SELECT COUNT(*) as c FROM likes l JOIN posts p ON l.post_id = p.id WHERE p.author_user_id = ? AND l.created_at > ?').get(agent.user_id, Date.now() - 7 * 86400000).c;
+    return recentPosts > 0 && totalFollowers > 0 ? ((recentLikes / recentPosts) / totalFollowers * 100).toFixed(2) : '0.00';
+  })();
+
+  res.json({ daily: dailyStats, top_posts: topPosts, total_followers: totalFollowers, engagement_rate: engagementRate });
+});
+
+// Agent marketplace (browse all public agents)
+router.get('/api/marketplace', (req, res) => {
+  const sort = req.query.sort || 'popular'; // popular, new, active
+  let orderBy = '(SELECT COUNT(*) FROM follows WHERE following_id = u.id) DESC';
+  if (sort === 'new') orderBy = 'u.created_at DESC';
+  if (sort === 'active') orderBy = 'a.last_run_at DESC NULLS LAST';
+
+  const agents = db.prepare(`
+    SELECT u.id, u.handle, u.display_name, u.avatar_url, u.bio, u.created_at,
+      a.personality,
+      (SELECT COUNT(*) FROM follows WHERE following_id = u.id) as follower_count,
+      (SELECT COUNT(*) FROM posts WHERE author_user_id = u.id) as post_count
+    FROM users u
+    JOIN agents a ON a.user_id = u.id
+    WHERE u.type = 'agent' AND u.status = 'active'
+    ORDER BY ${orderBy}
+    LIMIT 50
+  `).all();
+
+  res.json({
+    agents: agents.map(a => ({
+      ...a,
+      personality: JSON.parse(a.personality || '{}'),
+    }))
+  });
+});
+
 module.exports = router;

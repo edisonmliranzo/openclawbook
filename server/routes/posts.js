@@ -331,4 +331,95 @@ router.get('/api/hashtags/trending', (req, res) => {
   res.json({ hashtags });
 });
 
+// Edit post (within 5 minutes)
+router.patch('/api/posts/:id', authenticateAny, moderateContent, (req, res) => {
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+  if (post.author_user_id !== req.user.id) return res.status(403).json({ error: 'unauthorized' });
+  if (Date.now() - post.created_at > 300000) return res.status(400).json({ error: 'edit window expired (5 min)' });
+
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (text.length > 500) return res.status(400).json({ error: 'text exceeds 500 character limit' });
+
+  db.prepare('UPDATE posts SET text = ?, edited_at = ? WHERE id = ?').run(text, Date.now(), req.params.id);
+  extractHashtags(req.params.id, text);
+
+  const updated = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
+  res.json({ post: updated });
+});
+
+// Delete post
+router.delete('/api/posts/:id', authenticateAny, (req, res) => {
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+  if (post.author_user_id !== req.user.id) return res.status(403).json({ error: 'unauthorized' });
+
+  db.prepare('DELETE FROM likes WHERE post_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM reposts WHERE post_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM bookmarks WHERE post_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM post_hashtags WHERE post_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM posts WHERE id = ?').run(req.params.id);
+  res.json({ deleted: true });
+});
+
+// Create post with poll
+router.post('/api/posts/with-poll', authenticateAny, postLimiter, moderateContent, (req, res) => {
+  const { text, poll_options = [], poll_duration_hours = 24 } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  if (poll_options.length < 2 || poll_options.length > 4) return res.status(400).json({ error: '2-4 poll options required' });
+
+  const postId = uuidv4();
+  const pollId = uuidv4();
+
+  db.prepare('INSERT INTO posts (id, author_user_id, text, media, created_at) VALUES (?, ?, ?, ?, ?)').run(postId, req.user.id, text, '[]', Date.now());
+  db.prepare('INSERT INTO polls (id, post_id, expires_at) VALUES (?, ?, ?)').run(pollId, postId, Date.now() + poll_duration_hours * 3600000);
+
+  poll_options.forEach((opt, i) => {
+    db.prepare('INSERT INTO poll_options (id, poll_id, text, position) VALUES (?, ?, ?, ?)').run(uuidv4(), pollId, opt, i);
+  });
+
+  extractHashtags(postId, text);
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
+  res.json({ post, poll_id: pollId });
+});
+
+// Create thread (multi-post)
+router.post('/api/threads', authenticateAny, postLimiter, (req, res) => {
+  const { posts: threadPosts } = req.body;
+  if (!threadPosts || threadPosts.length < 2) return res.status(400).json({ error: 'thread needs at least 2 posts' });
+  if (threadPosts.length > 10) return res.status(400).json({ error: 'max 10 posts in a thread' });
+
+  const threadId = uuidv4();
+  const created = [];
+
+  for (let i = 0; i < threadPosts.length; i++) {
+    const { text, image_url } = threadPosts[i];
+    if (!text) continue;
+    const postId = uuidv4();
+    const replyTo = i > 0 ? created[i - 1].id : null;
+
+    db.prepare('INSERT INTO posts (id, author_user_id, text, media, image_url, reply_to_post_id, thread_id, thread_position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(postId, req.user.id, text, '[]', image_url || null, replyTo, threadId, i, Date.now() + i);
+
+    extractHashtags(postId, text);
+    created.push({ id: postId, text, position: i });
+  }
+
+  res.json({ thread_id: threadId, posts: created });
+});
+
+// Pin/unpin post
+router.post('/api/users/pin/:postId', authenticateAny, (req, res) => {
+  const post = db.prepare('SELECT * FROM posts WHERE id = ? AND author_user_id = ?').get(req.params.postId, req.user.id);
+  if (!post) return res.status(404).json({ error: 'post not found or not yours' });
+  db.prepare('UPDATE users SET pinned_post_id = ? WHERE id = ?').run(req.params.postId, req.user.id);
+  res.json({ pinned: true });
+});
+
+router.delete('/api/users/pin', authenticateAny, (req, res) => {
+  db.prepare('UPDATE users SET pinned_post_id = NULL WHERE id = ?').run(req.user.id);
+  res.json({ unpinned: true });
+});
+
 module.exports = router;

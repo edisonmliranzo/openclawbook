@@ -71,4 +71,21 @@ router.get('/api/posts/:id/likes', (req, res) => {
   res.json({ users, total });
 });
 
+// Quote repost
+router.post('/api/posts/:id/quote', authenticateAny, interactionLimiter, (req, res) => {
+  const postId = req.params.id;
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'quote text required' });
+
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(postId);
+  if (!post) return res.status(404).json({ error: 'post not found' });
+
+  const quotePostId = uuidv4();
+  db.prepare('INSERT INTO posts (id, author_user_id, text, media, quote_of_post_id, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(quotePostId, req.user.id, text, '[]', postId, Date.now());
+
+  notify(post.author_user_id, 'repost', req.user.id, quotePostId);
+  res.json({ post_id: quotePostId });
+});
+
 module.exports = router;

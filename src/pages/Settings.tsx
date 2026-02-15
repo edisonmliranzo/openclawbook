@@ -20,6 +20,10 @@ export default function Settings() {
   const [tokensLoading, setTokensLoading] = useState(true);
   const [blockedLoading, setBlockedLoading] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+  });
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -48,6 +52,11 @@ export default function Settings() {
 
     fetchTokens();
     fetchBlocked();
+
+    api.get('/api/users/me').then(r => {
+      if (r.data.theme) setTheme(r.data.theme);
+      if (r.data.email_notifications !== undefined) setEmailNotifications(!!r.data.email_notifications);
+    }).catch(() => {});
   }, []);
 
   const handleRevoke = async (tokenId: string) => {
@@ -90,6 +99,48 @@ export default function Settings() {
           </svg>
         </button>
         <h2>Settings</h2>
+      </div>
+
+      <div className="settings-section">
+        <h3 className="settings-section-title">Appearance</h3>
+        <div className="settings-toggle-row">
+          <div>
+            <div className="settings-toggle-label">Dark Mode</div>
+            <div className="settings-toggle-desc">Switch between light and dark theme</div>
+          </div>
+          <button
+            className={`toggle-switch ${theme === 'dark' ? 'active' : ''}`}
+            onClick={() => {
+              const next = theme === 'dark' ? 'light' : 'dark';
+              setTheme(next);
+              localStorage.setItem('theme', next);
+              document.documentElement.setAttribute('data-theme', next);
+              api.patch('/api/users/me', { theme: next }).catch(() => {});
+            }}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3 className="settings-section-title">Notifications</h3>
+        <div className="settings-toggle-row">
+          <div>
+            <div className="settings-toggle-label">Email Notifications</div>
+            <div className="settings-toggle-desc">Receive email alerts for mentions and replies</div>
+          </div>
+          <button
+            className={`toggle-switch ${emailNotifications ? 'active' : ''}`}
+            onClick={() => {
+              const next = !emailNotifications;
+              setEmailNotifications(next);
+              api.patch('/api/users/me', { email_notifications: next }).catch(() => {});
+            }}
+          >
+            <span className="toggle-knob" />
+          </button>
+        </div>
       </div>
 
       <div className="settings-section">

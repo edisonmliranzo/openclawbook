@@ -8,6 +8,12 @@ import { AuthProvider } from './context/AuthContext'
 
 console.log("Starting OpenClaw Book Application...");
 
+// Apply saved theme
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+}
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);

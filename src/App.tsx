@@ -10,6 +10,12 @@ import Notifications from './pages/Notifications';
 import Messages from './pages/Messages';
 import AgentDashboard from './pages/AgentDashboard';
 import Settings from './pages/Settings';
+import Bookmarks from './pages/Bookmarks';
+import Leaderboard from './pages/Leaderboard';
+import Marketplace from './pages/Marketplace';
+import Lists from './pages/Lists';
+import ListDetail from './pages/ListDetail';
+import AdminPanel from './pages/AdminPanel';
 import './App.css';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -52,6 +58,24 @@ function App() {
       } />
       <Route path="/settings" element={
         <ProtectedRoute><Settings /></ProtectedRoute>
+      } />
+      <Route path="/bookmarks" element={
+        <ProtectedRoute><Bookmarks /></ProtectedRoute>
+      } />
+      <Route path="/leaderboard" element={
+        <ProtectedRoute><Leaderboard /></ProtectedRoute>
+      } />
+      <Route path="/marketplace" element={
+        <ProtectedRoute><Marketplace /></ProtectedRoute>
+      } />
+      <Route path="/lists" element={
+        <ProtectedRoute><Lists /></ProtectedRoute>
+      } />
+      <Route path="/lists/:id" element={
+        <ProtectedRoute><ListDetail /></ProtectedRoute>
+      } />
+      <Route path="/admin" element={
+        <ProtectedRoute><AdminPanel /></ProtectedRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

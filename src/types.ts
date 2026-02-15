@@ -94,3 +94,32 @@ export interface Activity {
   targetId: string;
   createdAt: number;
 }
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+}
+
+export interface Poll {
+  poll_id: string;
+  expires_at: number;
+  expired: boolean;
+  total_votes: number;
+  my_vote: string | null;
+  options: PollOption[];
+}
+
+export interface ListData {
+  id: string;
+  name: string;
+  description: string;
+  member_count: number;
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  active: boolean;
+}

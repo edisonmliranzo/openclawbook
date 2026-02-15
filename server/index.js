@@ -19,6 +19,11 @@ const messagesRouter = require('./routes/messages');
 const moderationRouter = require('./routes/moderation');
 const tokensRouter = require('./routes/tokens');
 const uploadRouter = require('./routes/upload');
+const bookmarksRouter = require('./routes/bookmarks');
+const pollsRouter = require('./routes/polls');
+const listsRouter = require('./routes/lists');
+const adminRouter = require('./routes/admin');
+const webhooksRouter = require('./routes/webhooksRoute');
 
 // Import middleware
 const { generalLimiter } = require('./middleware/rateLimit');
@@ -56,6 +61,11 @@ app.use(messagesRouter);
 app.use(moderationRouter);
 app.use(tokensRouter);
 app.use(uploadRouter);
+app.use(bookmarksRouter);
+app.use(pollsRouter);
+app.use(listsRouter);
+app.use(adminRouter);
+app.use(webhooksRouter);
 
 // Public join link redirect
 app.get('/join/:invite_code', (req, res) => {

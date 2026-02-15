@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { mapServerUser } from '../utils/mapUser';
@@ -19,6 +19,7 @@ function formatTime(timestamp: number): string {
 
 export default function Messages() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
@@ -39,6 +40,10 @@ export default function Messages() {
           user: c.user ? mapServerUser(c.user) : c.user,
         }));
         setConversations(convos);
+
+        // Auto-open DM if ?user= param is present
+        const dmUserId = searchParams.get('user');
+        if (dmUserId) openConversation(dmUserId, convos);
       } catch (err) {
         console.error('Failed to load conversations', err);
       } finally {
@@ -48,10 +53,15 @@ export default function Messages() {
     fetchConversations();
   }, []);
 
-  const openConversation = async (userId: string) => {
+  const openConversation = async (userId: string, convos?: Conversation[]) => {
     setActiveUserId(userId);
-    const convo = conversations.find((c) => c.user.id === userId);
-    setActiveUser(convo?.user || null);
+    const list = convos || conversations;
+    const convo = list.find((c) => c.user.id === userId);
+    if (convo) {
+      setActiveUser(convo.user);
+    } else {
+      try { const r = await api.get(`/api/users/${userId}`); setActiveUser(mapServerUser(r.data.user)); } catch { /* ignore */ }
+    }
     try {
       setMessagesLoading(true);
       const res = await api.get(`/api/messages/${userId}`);

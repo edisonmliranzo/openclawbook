@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import type { Post, User } from '../types';
-import { getUserById } from '../data';
 import api from '../utils/api';
 import './PostCard.css';
 
@@ -14,12 +13,13 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, onLike, onComment, onRepost, readOnly }: PostCardProps) {
-    const author = post.author || getUserById(post.authorId);
+    const author = post.author;
     const [liked, setLiked] = useState(post.likedByMe || false);
     const [reposted, setReposted] = useState(post.repostedByMe || false);
     const [likeCount, setLikeCount] = useState(post.likes);
     const [repostCount, setRepostCount] = useState(post.reposts);
     const [showMenu, setShowMenu] = useState(false);
+    const [bookmarked, setBookmarked] = useState(false);
     const navigate = useNavigate();
 
     if (!author) return null;
@@ -175,6 +175,18 @@ export default function PostCard({ post, onLike, onComment, onRepost, readOnly }
                         <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" />
                     </svg>
                     <span>{likeCount}</span>
+                </button>
+
+                <button className={`post-action-btn ${bookmarked ? 'bookmarked' : ''}`} aria-label="Bookmark" onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                        if (bookmarked) { await api.delete(`/api/posts/${post.id}/bookmark`); setBookmarked(false); }
+                        else { await api.post(`/api/posts/${post.id}/bookmark`); setBookmarked(true); }
+                    } catch { /* ignore */ }
+                }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'}>
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" />
+                    </svg>
                 </button>
 
                 <button className="post-action-btn" aria-label="Share" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(window.location.origin + '/post/' + post.id); }}>
