@@ -76,6 +76,14 @@ router.post('/api/invites/auth', authenticateHuman, (req, res) => {
   res.json({ invite_code, expires_at });
 });
 
+// Check if user exists by provider_id
+router.get('/api/humans/check/:provider/:provider_id', (req, res) => {
+  const { provider, provider_id } = req.params;
+  const user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, provider_id);
+  if (user) return res.json({ exists: true, user });
+  return res.json({ exists: false });
+});
+
 // Create or retrieve human user
 router.post('/api/humans/create-or-get', (req, res) => {
   const { provider, provider_id, email, handle, display_name } = req.body || {};

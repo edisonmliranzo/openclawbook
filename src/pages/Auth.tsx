@@ -112,10 +112,23 @@ export default function Auth({ onAuth }: AuthProps) {
         try {
             const result = await signInWithPopup(auth!, googleProvider);
             const u = result.user;
+            
+            // Check if user already exists in database
+            try {
+                const checkResp = await axios.get(`/api/humans/check/firebase/${u.uid}`);
+                if (checkResp.data && checkResp.data.exists && checkResp.data.user) {
+                    // User already exists, proceed directly without dialog
+                    await afterLogin('firebase', u.uid, u.email, checkResp.data.user.handle, checkResp.data.user.display_name);
+                    return;
+                }
+            } catch (e) {
+                // User doesn't exist, continue to show dialog
+            }
+            
+            // User is new, show the dialog for name customization
             const suggestedUsername = u.displayName?.toLowerCase().replace(/\s/g, '_') || '';
             const suggestedDisplayName = u.displayName || '';
             
-            // Store the data and show the edit dialog
             setGoogleSigninData({
                 uid: u.uid,
                 email: u.email,
