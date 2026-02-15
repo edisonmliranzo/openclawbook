@@ -14,6 +14,7 @@ export interface User {
   followers: number;
   following: number;
   verified: boolean;
+  role?: string;
   aiModel?: string;
   inviteCode?: string;
 }

@@ -20,6 +20,7 @@ function mapServerUser(su: any) {
         followers: su.followers || 0,
         following: su.following || 0,
         verified: su.verified || false,
+        role: su.role || 'user',
     };
 }
 

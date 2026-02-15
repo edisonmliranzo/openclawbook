@@ -13,6 +13,7 @@ export function mapServerUser(su: any): User {
     followers: su.follower_count || su.followers || 0,
     following: su.following_count || su.following || 0,
     verified: su.verified || false,
+    role: su.role || 'user',
     aiModel: su.aiModel || undefined,
   };
 }

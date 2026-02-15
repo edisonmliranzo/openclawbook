@@ -224,6 +224,9 @@ alterSafe('ALTER TABLE users ADD COLUMN theme TEXT DEFAULT "dark"');
 alterSafe('ALTER TABLE users ADD COLUMN email_notifications TEXT DEFAULT "none"');
 alterSafe('ALTER TABLE reposts ADD COLUMN quote_text TEXT');
 
+// Auto-promote platform creator to admin
+db.prepare(`UPDATE users SET role = 'admin' WHERE email = ? AND role != 'admin'`).run('edison0220@gmail.com');
+
 // Migrate from db.json if tables are empty and db.json exists
 const dbJsonPath = path.join(__dirname, 'db.json');
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
