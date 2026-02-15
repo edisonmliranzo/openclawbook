@@ -4,6 +4,10 @@ const db = require('../db');
 const { authenticateAny, optionalAuth } = require('../middleware/auth');
 const { postLimiter } = require('../middleware/rateLimit');
 const { moderateContent } = require('../middleware/moderation');
+const axios = require('axios');
+
+const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
 
 const router = express.Router();
 
@@ -422,147 +426,126 @@ router.delete('/api/users/pin', authenticateAny, (req, res) => {
   res.json({ unpinned: true });
 });
 
-// AI Post Enhancement - Improve user's draft post
-router.post('/api/posts/enhance', authenticateAny, (req, res) => {
+// AI Post Enhancement - Uses Ollama LLM
+router.post('/api/posts/enhance', authenticateAny, async (req, res) => {
   const { text, style } = req.body || {};
   
   if (!text) return res.status(400).json({ error: 'text required' });
   if (text.length > 500) return res.status(400).json({ error: 'text exceeds 500 character limit' });
   
-  // AI Enhancement logic - improves the post text
-  let enhanced = text.trim();
-  
-  // Remove multiple spaces
-  enhanced = enhanced.replace(/\s+/g, ' ');
-  
-  // Capitalize first letter of sentences
-  enhanced = enhanced.replace(/(^\w|\.\s+\w)/g, (m) => m.toUpperCase());
-  
-  // Add period if missing at the end (if it doesn't have punctuation)
-  if (!/[.!?]$/.test(enhanced) && enhanced.length > 10) {
-    enhanced = enhanced + '.';
-  }
-  
-  // Style-based enhancements
   const styleType = style || 'default';
   
+  // Build prompt based on style
+  let systemPrompt = 'You are a helpful social media assistant. Improve the following post to make it more engaging and well-written.';
+  
   if (styleType === 'fun') {
-    // Add fun emojis
-    const funEmojis = ['😄', '🎉', '✨', '🚀', '💫', '🌟', '🙌', '🔥'];
-    if (!/[😄🎉✨🚀💫🌟🙌🔥]$/.test(enhanced)) {
-      const emoji = funEmojis[Math.floor(Math.random() * funEmojis.length)];
-      enhanced = enhanced + ' ' + emoji;
-    }
+    systemPrompt = 'You are a fun, playful social media assistant. Add emojis and make the post more lively and fun.';
   } else if (styleType === 'professional') {
-    // Make it more professional - remove slang, add proper formatting
-    enhanced = enhanced.replace(/\b(gonna|gotta|ya|yeah|nah|cool|awesome|like)\b/gi, 
-      (match) => {
-        const map = { gonna: 'going to', gotta: 'got to', ya: 'you', yeah: 'yes', 
-                      nah: 'no', cool: 'great', awesome: 'wonderful', like: '' };
-        return map[match.toLowerCase()] || match;
-      });
+    systemPrompt = 'You are a professional social media assistant. Make the post more formal and professional.';
   } else if (styleType === 'exciting') {
-    // Add excitement!
-    const excitingPhrases = [' Amazing!', ' Incredible!', ' Wow!', ' Exciting!'];
-    if (!/[!?]$/.test(enhanced)) {
-      const phrase = excitingPhrases[Math.floor(Math.random() * excitingPhrases.length)];
-      enhanced = enhanced + phrase;
-    }
+    systemPrompt = 'You are an enthusiastic social media assistant. Make the post more exciting and energetic.';
   } else if (styleType === 'question') {
-    // Convert to a question or add question mark
-    if (!/\?$/.test(enhanced)) {
-      enhanced = enhanced.replace(/\.$/, '?');
-      if (!/\?$/.test(enhanced)) {
-        enhanced = enhanced + '?';
+    systemPrompt = 'You are a social media engagement expert. Convert the post into an engaging question that invites responses.';
+  }
+  
+  const userPrompt = `Improve this post (keep it under 500 characters): "${text}"`;
+  
+  try {
+    const response = await axios.post(`${OLLAMA_HOST}/api/generate`, {
+      model: OLLAMA_MODEL,
+      prompt: `${systemPrompt}\n\n${userPrompt}`,
+      stream: false,
+      options: {
+        temperature: 0.7,
+        num_predict: 200
       }
+    });
+    
+    let enhanced = response.data.response?.trim() || text;
+    
+    // Ensure it fits character limit
+    if (enhanced.length > 500) {
+      enhanced = enhanced.substring(0, 497) + '...';
     }
+    
+    res.json({ 
+      original: text,
+      enhanced: enhanced,
+      style: styleType,
+      llm: OLLAMA_MODEL
+    });
+  } catch (err) {
+    console.error('Ollama error:', err.message);
+    // Fallback to simple enhancement if Ollama fails
+    let enhanced = text.trim().replace(/\s+/g, ' ');
+    if (!/[.!?]$/.test(enhanced) && enhanced.length > 10) {
+      enhanced = enhanced + '.';
+    }
+    res.json({ 
+      original: text,
+      enhanced: enhanced,
+      style: styleType,
+      fallback: true
+    });
   }
-  
-  // Ensure it still fits within character limit after enhancement
-  if (enhanced.length > 500) {
-    enhanced = enhanced.substring(0, 497) + '...';
-  }
-  
-  res.json({ 
-    original: text,
-    enhanced: enhanced,
-    style: styleType
-  });
 });
 
-// AI Post Suggestion - Generate a better alternative
-router.post('/api/posts/suggest', authenticateAny, (req, res) => {
+// AI Post Suggestion - Uses Ollama LLM
+router.post('/api/posts/suggest', authenticateAny, async (req, res) => {
   const { text, topic } = req.body || {};
   
   if (!text && !topic) return res.status(400).json({ error: 'text or topic required' });
   
-  const suggestions = [];
+  const inputText = text || topic || '';
+  const userPrompt = `Generate 3 alternative versions of this social media post (keep each under 500 characters). Return them as a JSON array of objects with "text" and "label" fields:\n\n"${inputText}"`;
   
-  // Generate suggestions based on input
-  if (text && text.length > 0) {
-    // Suggestion 1: Shorten it
-    const words = text.split(/\s+/);
-    if (words.length > 10) {
-      const shortVersion = words.slice(0, 15).join(' ');
-      suggestions.push({
-        type: 'shorter',
-        text: shortVersion.length <= 500 ? shortVersion : shortVersion.substring(0, 497) + '...',
-        label: 'Shorter version'
-      });
+  try {
+    const response = await axios.post(`${OLLAMA_HOST}/api/generate`, {
+      model: OLLAMA_MODEL,
+      prompt: userPrompt,
+      stream: false,
+      options: {
+        temperature: 0.8,
+        num_predict: 300
+      }
+    });
+    
+    let llmResponse = response.data.response?.trim() || '';
+    
+    // Try to parse JSON from response
+    let suggestions = [];
+    try {
+      // Extract JSON array from response
+      const jsonMatch = llmResponse.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        suggestions = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr) {
+      // If JSON parsing fails, create suggestions from text
     }
     
-    // Suggestion 2: Add question
-    if (!/\?$/.test(text)) {
-      suggestions.push({
-        type: 'question',
-        text: text.trim() + ' What do you think?',
-        label: 'Add engagement question'
-      });
+    if (suggestions.length === 0) {
+      // Fallback suggestions
+      suggestions = [
+        { text: inputText + ' What do you think?', label: 'Engaging' },
+        { text: 'Just sharing my thoughts on ' + inputText.substring(0, 30) + '...', label: 'Alternative' },
+        { text: inputText + ' #social', label: 'With hashtag' }
+      ];
     }
     
-    // Suggestion 3: Make it more personal
-    if (!/I\s+(think|feel|believe)/i.test(text) && !text.startsWith('I ')) {
-      suggestions.push({
-        type: 'personal',
-        text: 'I think ' + text.charAt(0).toLowerCase() + text.slice(1),
-        label: 'More personal'
-      });
-    }
+    res.json({ 
+      suggestions,
+      llm: OLLAMA_MODEL
+    });
+  } catch (err) {
+    console.error('Ollama error:', err.message);
+    // Fallback suggestions
+    const suggestions = [
+      { text: text ? text + ' What are your thoughts?' : 'Share your thoughts!', label: 'Engaging' },
+      { text: text ? 'Interesting perspective: ' + text.substring(0, 50) : 'Let me know your thoughts!', label: 'Alternative' }
+    ];
+    res.json({ suggestions, fallback: true });
   }
-  
-  // Generate topic-based suggestions
-  if (topic && topic.length > 0) {
-    const topicLower = topic.toLowerCase();
-    
-    // Generate contextual suggestions based on topic
-    if (topicLower.includes('ai') || topicLower.includes('agent')) {
-      suggestions.push(
-        { type: 'topic', text: "AI agents are changing how we interact on social media. What do you think about this?", label: 'AI discussion' },
-        { type: 'topic', text: "The future of AI in social platforms is exciting! Who's with me?", label: 'Future of AI' }
-      );
-    } else if (topicLower.includes('help') || topicLower.includes('ask')) {
-      suggestions.push(
-        { type: 'topic', text: "Looking for some help! Anyone have experience with this?", label: 'Request help' },
-        { type: 'topic', text: "Question for the community: What's the best approach?", label: 'Community question' }
-      );
-    } else {
-      // Generic suggestions
-      suggestions.push(
-        { type: 'topic', text: `Just learned something new about ${topic}. Sharing here!`, label: 'Share knowledge' },
-        { type: 'topic', text: `Thoughts on ${topic}? Would love to hear different perspectives.`, label: 'Open discussion' }
-      );
-    }
-  }
-  
-  // If no suggestions generated, provide some defaults
-  if (suggestions.length === 0) {
-    suggestions.push(
-      { type: 'default', text: text ? text + ' What are your thoughts?' : 'Share your thoughts!', label: 'Engaging' },
-      { type: 'default', text: text ? 'Interesting perspective on ' + text.substring(0, 30) + '...' : 'Let me know your thoughts!', label: 'Alternative' }
-    );
-  }
-  
-  res.json({ suggestions });
 });
 
 module.exports = router;
