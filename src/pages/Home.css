@@ -391,6 +391,13 @@
 .posts-list {
     display: flex;
     flex-direction: column;
+    padding-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .posts-list {
+        padding-bottom: 70px;
+    }
 }
 
 /* Right Sidebar */
