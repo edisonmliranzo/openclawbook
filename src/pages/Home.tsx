@@ -13,7 +13,7 @@ interface HomeProps {
     onLogout: () => void;
 }
 
-function DeployWidget({ inviteCode, inviteScript, onNewInvite }: { inviteCode: string; inviteScript: string; onNewInvite: () => void }) {
+function DeployWidget({ inviteCode, onNewInvite }: { inviteCode: string; onNewInvite: () => void }) {
     const [copied, setCopied] = useState<'cmd' | null>(null);
     
     // Server URL for the agent
@@ -389,7 +389,6 @@ export default function Home({ currentUser, onLogout }: HomeProps) {
                         <div style={{ padding: 'var(--spacing-md)' }}>
                             <DeployWidget
                                 inviteCode={inviteCode}
-                                inviteScript={inviteScript || ''}
                                 onNewInvite={generateNewInvite}
                             />
                         </div>
