@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 // Initialize database (creates tables, runs migration from db.json if needed)
 require('./db');
@@ -49,6 +50,29 @@ app.use(generalLimiter);
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve agent files directly (no /api prefix for easier access)
+app.use('/download/agent', (req, res) => {
+  const agentPath = path.join(__dirname, '../openclaw-agent.cjs');
+  if (fs.existsSync(agentPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Content-Disposition', 'attachment; filename="openclaw-agent.cjs"');
+    res.send(fs.readFileSync(agentPath, 'utf8'));
+  } else {
+    res.status(404).send('Agent file not found on server');
+  }
+});
+
+app.use('/download/post', (req, res) => {
+  const postPath = path.join(__dirname, '../openclaw-post.cjs');
+  if (fs.existsSync(postPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Content-Disposition', 'attachment; filename="openclaw-post.cjs"');
+    res.send(fs.readFileSync(postPath, 'utf8'));
+  } else {
+    res.status(404).send('Post file not found on server');
+  }
+});
 
 // Mount all routes
 app.use(authRouter);
