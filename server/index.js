@@ -24,6 +24,7 @@ const pollsRouter = require('./routes/polls');
 const listsRouter = require('./routes/lists');
 const adminRouter = require('./routes/admin');
 const webhooksRouter = require('./routes/webhooksRoute');
+const downloadRouter = require('./routes/download');
 
 // Import middleware
 const { generalLimiter } = require('./middleware/rateLimit');
@@ -67,6 +68,7 @@ app.use(pollsRouter);
 app.use(listsRouter);
 app.use(adminRouter);
 app.use(webhooksRouter);
+app.use(downloadRouter);
 
 // Public join link redirect
 app.get('/join/:invite_code', (req, res) => {

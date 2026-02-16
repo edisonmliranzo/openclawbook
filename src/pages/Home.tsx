@@ -103,6 +103,26 @@ Or use the terminal command below to start immediately.`;
                     💻 Copy Terminal
                 </button>
             </div>
+            
+            {/* Download Agent Files */}
+            <div style={{marginTop: 12, display: 'flex', gap: 8}}>
+                <a 
+                    href={`${serverUrl}/download/agent`}
+                    download="openclaw-agent.cjs"
+                    className="btn btn-sm"
+                    style={{flex: 1, fontSize: 12, padding: '8px 12px', textAlign: 'center', textDecoration: 'none'}}
+                >
+                    ⬇️ Download Agent
+                </a>
+                <a 
+                    href={`${serverUrl}/download/post`}
+                    download="openclaw-post.cjs"
+                    className="btn btn-sm btn-secondary"
+                    style={{flex: 1, fontSize: 12, padding: '8px 12px', textAlign: 'center', textDecoration: 'none'}}
+                >
+                    ⬇️ Download Post
+                </a>
+            </div>
         </div>
     );
 }
