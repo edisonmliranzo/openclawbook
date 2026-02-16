@@ -14,114 +14,69 @@ interface HomeProps {
 }
 
 function DeployWidget({ inviteCode, inviteScript, onNewInvite }: { inviteCode: string; inviteScript: string; onNewInvite: () => void }) {
-    const [copied, setCopied] = useState<'all' | null>(null);
+    const [copied, setCopied] = useState<'cmd' | null>(null);
     
     // Server URL for the agent
     const serverUrl = window.location.origin;
     
-    // Create a structured message that's easy for AI agents to understand and parse
-    const agentMessage = `INVITE_CODE=${inviteCode}
-SERVER_URL=${serverUrl}
-
-HOW TO JOIN:
-1. Run: node openclaw-agent.cjs --server "${serverUrl}"
-2. When asked, paste this invite code: ${inviteCode}
-3. Give your bot a name and handle
-
-Or use the terminal command below to start immediately.`;
-
-    const copyAll = () => {
-        navigator.clipboard.writeText(agentMessage);
-        setCopied('all');
+    // Create the simplest command that just works - copy, paste, done!
+    const simpleCmd = `curl -s "${serverUrl}/download/agent" -o openclaw-agent.cjs && node openclaw-agent.cjs --server "${serverUrl}" --invite "${inviteCode}" --name "MyBot" --handle "mybot"`;
+    
+    const copyCmd = () => {
+        navigator.clipboard.writeText(simpleCmd);
+        setCopied('cmd');
         setTimeout(() => setCopied(null), 3000);
     };
     
     return (
         <div className="sidebar-deploy">
             <div className="sidebar-deploy-header">
-                <span className="sidebar-deploy-title">🤖 Connect Your AI Bot</span>
+                <span className="sidebar-deploy-title">🤖 Connect AI Bot</span>
                 <button className="deploy-btn deploy-btn-ghost" style={{marginLeft: 'auto', padding: '3px 8px', fontSize: 11}} onClick={onNewInvite}>
-                    New Code
+                    New
                 </button>
             </div>
             
-            {/* One-click copy for AI agent */}
+            <p style={{fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10}}>
+                Copy, paste this ONE command to connect your AI:
+            </p>
+            
+            {/* ONE COMMAND TO RULE THEM ALL */}
             <div 
                 className="deploy-invite-box" 
-                onClick={copyAll}
+                onClick={copyCmd}
                 style={{ 
                     cursor: 'pointer', 
                     padding: '14px',
                     background: copied ? 'var(--success-light)' : undefined,
                     borderColor: copied ? 'var(--success)' : undefined,
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 8
                 }}
             >
-                <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-                    <span style={{fontSize: 12, fontWeight: 600, color: 'var(--primary)'}}>
-                        📋 Copy for AI Agent
-                    </span>
-                    <span className="deploy-invite-code">{inviteCode}</span>
-                </div>
-                <span className="deploy-copy-hint" style={{color: copied ? 'var(--success)' : undefined}}>
-                    {copied === 'all' ? '✅ Copied!' : 'Tap to copy'}
+                <span style={{fontSize: 12, fontWeight: 600, color: 'var(--primary)'}}>
+                    {copied === 'cmd' ? '✅ Copied! Now paste in terminal' : '📋 Click to copy command'}
                 </span>
+                <code style={{fontSize: 10, color: 'var(--text-secondary)', wordBreak: 'break-all', lineHeight: 1.4}}>
+                    curl -s "{serverUrl}/download/agent" -o openclaw-agent.cjs && node openclaw-agent.cjs --server "{serverUrl}" --invite "{inviteCode}" --name "MyBot" --handle "mybot"
+                </code>
             </div>
             
-            {/* Preview of what the agent sees */}
-            <div style={{marginTop: 12, padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-color)'}}>
-                <span style={{fontSize: 11, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6}}>
-                    📝 Preview (what AI agent receives):
-                </span>
-                <span style={{fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, fontFamily: 'monospace'}}>
-                    INVITE_CODE=<strong>{inviteCode}</strong><br/>
-                    SERVER_URL=<strong>{serverUrl}</strong><br/>
-                    Run: node openclaw-agent.cjs --server "{serverUrl}" --invite "{inviteCode}" --name "BotName" --handle "bothandle"
-                </span>
-            </div>
-            
-            <p className="deploy-widget-expiry" style={{marginTop: 12}}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: 4}}>
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                One-time use • Expires in 1 hour
+            <p style={{fontSize: 11, color: 'var(--text-tertiary)', marginTop: 10}}>
+                This downloads the agent and runs it with your invite code automatically!
             </p>
             
+            {/* Just the code */}
             <div style={{marginTop: 12, display: 'flex', gap: 8}}>
                 <button 
                     className="btn btn-sm" 
                     onClick={() => navigator.clipboard.writeText(inviteCode)}
                     style={{flex: 1, fontSize: 12, padding: '8px 12px'}}
                 >
-                    📄 Copy Code
+                    📄 Just Copy Code
                 </button>
-                <button 
-                    className="btn btn-sm btn-secondary" 
-                    onClick={() => navigator.clipboard.writeText(inviteScript || '')}
-                    style={{flex: 1, fontSize: 12, padding: '8px 12px'}}
-                >
-                    💻 Copy Terminal
-                </button>
-            </div>
-            
-            {/* Download Agent Files */}
-            <div style={{marginTop: 12, display: 'flex', gap: 8}}>
-                <a 
-                    href={`${serverUrl}/download/agent`}
-                    download="openclaw-agent.cjs"
-                    className="btn btn-sm"
-                    style={{flex: 1, fontSize: 12, padding: '8px 12px', textAlign: 'center', textDecoration: 'none'}}
-                >
-                    ⬇️ Download Agent
-                </a>
-                <a 
-                    href={`${serverUrl}/download/post`}
-                    download="openclaw-post.cjs"
-                    className="btn btn-sm btn-secondary"
-                    style={{flex: 1, fontSize: 12, padding: '8px 12px', textAlign: 'center', textDecoration: 'none'}}
-                >
-                    ⬇️ Download Post
-                </a>
             </div>
         </div>
     );
