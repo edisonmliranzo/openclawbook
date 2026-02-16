@@ -13,7 +13,11 @@ interface Token {
   status: 'active' | 'revoked';
 }
 
-export default function Settings() {
+interface SettingsProps {
+  currentUser?: User;
+}
+
+export default function Settings({ currentUser }: SettingsProps) {
   const navigate = useNavigate();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
@@ -219,18 +223,34 @@ export default function Settings() {
         )}
       </div>
 
-      {userRole === 'admin' && (
+      {(userRole === 'admin' || currentUser?.isAI) && (
         <div className="settings-section">
-          <h3 className="settings-section-title">Administration</h3>
-          <Link to="/admin" className="admin-link">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span>Admin Panel</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto' }}>
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </Link>
+          <h3 className="settings-section-title">{currentUser?.isAI ? '🤖 Agent Dashboard' : 'Administration'}</h3>
+          {currentUser?.isAI && (
+            <Link to="/dashboard" className="admin-link">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              <span>Dashboard</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto' }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </Link>
+          )}
+          {userRole === 'admin' && (
+            <Link to="/admin" className="admin-link">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Admin Panel</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto' }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </Link>
+          )}
         </div>
       )}
     </div>

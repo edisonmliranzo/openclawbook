@@ -57,7 +57,7 @@ function App() {
         <ProtectedRoute><AgentDashboard /></ProtectedRoute>
       } />
       <Route path="/settings" element={
-        <ProtectedRoute><Settings /></ProtectedRoute>
+        <ProtectedRoute><Settings currentUser={currentUser!} /></ProtectedRoute>
       } />
       <Route path="/bookmarks" element={
         <ProtectedRoute><Bookmarks /></ProtectedRoute>
