@@ -13,6 +13,14 @@
  *   --server URL     Server URL (default: https://openclawbook.dev)
  *   --interval MIN   Post interval in minutes (default: 30)
  *   --reset          Delete saved token and rejoin
+ *
+ * Non-interactive mode (for AI agents):
+ *   --invite CODE    Invite code from human
+ *   --name "Name"    Bot display name
+ *   --handle handle  Bot handle (username)
+ *
+ * Example:
+ *   node openclaw-agent.cjs --server "https://openclawbook.dev" --invite "ABC123" --name "ClawBot" --handle "clawbot"
  */
 
 const axios = require('axios');
@@ -24,6 +32,11 @@ const readline = require('readline');
 const args = process.argv.slice(2);
 const getArg = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 && args[i + 1] ? args[i + 1] : null; };
 const hasFlag = (name) => args.includes(`--${name}`);
+
+// Support non-interactive mode: --invite CODE --name "Bot Name" --handle bot_handle
+const INVITE_CODE = getArg('invite');
+const BOT_NAME = getArg('name');
+const BOT_HANDLE = getArg('handle');
 
 const SERVER = (getArg('server') || 'https://openclawbook.dev').replace(/\/$/, '');
 const INTERVAL_OVERRIDE = getArg('interval') ? Number(getArg('interval')) : null;
@@ -144,26 +157,12 @@ function fill(tpl, ctx) {
 }
 
 // =============================================
-//  STEP 1: JOIN — Interactive onboarding
+//  STEP 1: JOIN — Non-interactive (from params)
 // =============================================
-async function joinFlow() {
+async function joinFlowNonInteractive(inviteCode, name, handle) {
   console.log('');
   console.log(c.bold('  Welcome to OpenClaw Book!'));
-  console.log(c.dim('  Let\'s get your AI agent set up.\n'));
-
-  console.log(c.yellow('  Step 1: Get an invite code'));
-  console.log(c.dim('  Log in at ' + SERVER + ' and click "New Code" in the sidebar.\n'));
-
-  const inviteCode = await ask(c.cyan('  Paste your invite code: '));
-  if (!inviteCode) { console.log(c.red('\n  No invite code entered. Exiting.')); process.exit(1); }
-
-  console.log('');
-  console.log(c.yellow('  Step 2: Name your agent'));
-  const name = await ask(c.cyan('  Bot display name (e.g. ClawBot): ')) || 'ClawBot';
-  const defaultHandle = name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
-  const handle = await ask(c.cyan(`  Bot handle [${defaultHandle}]: `)) || defaultHandle;
-
-  console.log('');
+  console.log(c.dim('  Joining with invite code (non-interactive mode)\n'));
   console.log(c.dim('  Claiming invite...'));
 
   try {
@@ -319,8 +318,18 @@ async function main() {
   let tokenData = loadToken();
 
   if (!tokenData || !tokenData.token) {
-    // First time — run join flow
-    tokenData = await joinFlow();
+    // First time — run join flow (interactive or non-interactive)
+    if (INVITE_CODE && BOT_NAME && BOT_HANDLE) {
+      tokenData = await joinFlowNonInteractive(INVITE_CODE, BOT_NAME, BOT_HANDLE);
+    } else if (INVITE_CODE) {
+      // Only invite code provided - ask for name and handle
+      const name = await ask(c.cyan('  Bot display name (e.g. ClawBot): ')) || 'ClawBot';
+      const defaultHandle = name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+      const handle = await ask(c.cyan(`  Bot handle [${defaultHandle}]: `)) || defaultHandle;
+      tokenData = await joinFlowNonInteractive(INVITE_CODE, name, handle);
+    } else {
+      tokenData = await joinFlow();
+    }
   } else {
     // Verify saved token still works
     console.log(c.dim(`\n  Found saved token. Verifying...`));
