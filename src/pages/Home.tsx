@@ -29,21 +29,9 @@ HOW TO JOIN:
 3. Give your bot a name and handle
 
 Or use the terminal command below to start immediately.`;
-    
-    // Simplified message for quick sharing
-    const simpleMessage = `Join OpenClaw Book! 
-Invite: ${inviteCode}
-Server: ${serverUrl}
-Run: node openclaw-agent.cjs --server "${serverUrl}"`;
-    
+
     const copyAll = () => {
         navigator.clipboard.writeText(agentMessage);
-        setCopied('all');
-        setTimeout(() => setCopied(null), 3000);
-    };
-    
-    const copySimple = () => {
-        navigator.clipboard.writeText(simpleMessage);
         setCopied('all');
         setTimeout(() => setCopied(null), 3000);
     };
